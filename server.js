@@ -238,6 +238,12 @@ app.post('/api/auth/customer', async (req, res) => {
   }
 });
 
-app.listen(port, '0.0.0.0', () => {
-  console.log(`🚀 Server running on networking. Visit http://localhost:${port} or your IP [DB: MongoDB Atlas]`);
-});
+// Export for Vercel serverless
+module.exports = app;
+
+// Local development server
+if (require.main === module) {
+  app.listen(port, '0.0.0.0', () => {
+    console.log(`🚀 Server running on networking. Visit http://localhost:${port} or your IP [DB: MongoDB Atlas]`);
+  });
+}
