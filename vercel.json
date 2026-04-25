@@ -3,21 +3,10 @@
   "builds": [
     {
       "src": "server.js",
-      "use": "@vercel/node",
-      "config": {
-        "includeFiles": ["main.html"]
-      }
-    },
-    {
-      "src": "cinematic/**",
-      "use": "@vercel/static"
+      "use": "@vercel/node"
     }
   ],
   "routes": [
-    {
-      "src": "/cinematic/(.*)",
-      "dest": "/cinematic/$1"
-    },
     {
       "src": "/(.*)",
       "dest": "server.js"
