@@ -1,0 +1,2107 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AutoCraft Workshop Management</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Rajdhani:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        sidebar: '#272d1f',
+        accent: '#a7d152',
+        lightbg: '#e5ede6',
+        cardbg: '#f8faf9',
+      }
+    }
+  }
+}
+</script>
+<style>
+:root {
+  --accent:#FF6B2B; --accent2:#FFB347; --green:#22c55e; --red:#ef4444;
+  --blue:#3b82f6; --yellow:#eab308; --purple:#a855f7;
+}
+[data-theme="dark"] {
+  --bg:#0a0a0f; --bg2:#111118; --bg3:#1a1a24; --bg4:#22222f;
+  --border:#2a2a3a; --border2:#3a3a50;
+  --text:#f0f0f8; --text2:#9090b0; --text3:#5a5a7a;
+  --card:#13131e; --card2:#1c1c2a; --glow:rgba(255,107,43,0.15);
+}
+[data-theme="light"] {
+  --bg:#f5f5fa; --bg2:#ececf5; --bg3:#e2e2ef; --bg4:#d8d8eb;
+  --border:#d0d0e0; --border2:#b8b8d0;
+  --text:#0f0f1a; --text2:#4a4a6a; --text3:#8080a0;
+  --card:#ffffff; --card2:#f8f8ff; --glow:rgba(255,107,43,0.08);
+}
+*{margin:0;padding:0;box-sizing:border-box;scroll-behavior:smooth;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;transition:background .3s,color .3s;perspective:1000px;}
+h1,h2,h3,h4{font-family:'Rajdhani',sans-serif;letter-spacing:.02em;}
+code,.mono{font-family:'Space Mono',monospace;}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+
+/* SMOOTH CURSOR MAGIC */
+.cursor-dot, .cursor-outline {
+  position: fixed; top: 0; left: 0; transform: translate(-50%, -50%);
+  border-radius: 50%; z-index: 10001; pointer-events: none; opacity: 0;
+  transition: opacity 0.3s ease, width 0.3s cubic-bezier(0.17, 0.67, 0.83, 0.67), height 0.3s cubic-bezier(0.17, 0.67, 0.83, 0.67), background-color 0.3s ease;
+}
+.cursor-dot { width: 6px; height: 6px; background-color: var(--accent); }
+.cursor-outline { width: 34px; height: 34px; border: 1.5px solid var(--accent); z-index: 10000; }
+.cursor-active .cursor-outline { width: 50px; height: 50px; background-color: rgba(255, 107, 43, 0.1); border-color: transparent; }
+.cursor-active .cursor-dot { width: 4px; height: 4px; }
+@media (pointer: coarse) { .cursor-dot, .cursor-outline { display: none !important; } }
+
+
+/* LOADER */
+#global-loader{position:fixed;inset:0;background:var(--bg);z-index:9998;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;}
+.loader-logo{font-family:'Rajdhani',sans-serif;font-size:2.5rem;font-weight:700;color:var(--accent);}
+.loader-spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+@keyframes popIn{0%{transform:scale(.5);opacity:0}70%{transform:scale(1.1)}100%{transform:scale(1);opacity:1}}
+
+/* TOAST */
+#toast-container{position:fixed;top:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:10px;}
+.toast{padding:12px 20px;border-radius:10px;font-size:14px;font-weight:500;background:var(--card);border:1px solid var(--border2);animation:toastIn .3s ease;display:flex;align-items:center;gap:10px;min-width:280px;max-width:380px;box-shadow:0 8px 32px rgba(0,0,0,.3);}
+.toast.success{border-left:3px solid var(--green);}
+.toast.error{border-left:3px solid var(--red);}
+.toast.info{border-left:3px solid var(--accent);}
+@keyframes toastIn{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}
+
+/* PAGES */
+.page{display:none;min-height:100vh;}
+.page.active{display:block;}
+#login-page.active{display:flex;align-items:center;justify-content:center;}
+
+/* LOGIN */
+#login-page{background:var(--bg);position:relative;overflow:hidden;}
+.login-bg{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 20% 50%,rgba(255,107,43,.08) 0%,transparent 60%),radial-gradient(ellipse at 80% 20%,rgba(255,179,71,.05) 0%,transparent 50%);}
+.login-grid{position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:50px 50px;opacity:.3;}
+.login-container{position:relative;z-index:1;width:100%;max-width:440px;padding:20px;}
+.login-logo{text-align:center;margin-bottom:32px;}
+.login-logo .logo-icon{width:64px;height:64px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 12px;box-shadow:0 0 40px var(--glow);}
+.login-logo h1{font-size:2rem;}
+.login-logo p{color:var(--text2);font-size:14px;margin-top:4px;}
+
+.login-tabs{display:flex;background:rgba(0,0,0,0.3);border-radius:12px;padding:6px;gap:6px;margin-bottom:28px;border:1px solid rgba(255,255,255,0.05);box-shadow:inset 0 4px 10px rgba(0,0,0,0.5);}
+.login-tab{flex:1;padding:12px;border-radius:9px;border:none;cursor:pointer;font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:600;background:transparent;color:var(--text2);transition:all .3s cubic-bezier(.25,.8,.25,1);text-shadow:0 1px 2px rgba(0,0,0,0.5);}
+.login-tab.active{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;box-shadow:0 8px 16px rgba(255,107,43,.4),inset 0 1px 1px rgba(255,255,255,0.4);transform:translateY(-2px);}
+
+.login-card{background:linear-gradient(145deg,var(--card),var(--bg2));border:1px solid rgba(255,255,255,0.08);border-radius:24px;padding:36px;box-shadow:0 30px 60px rgba(0,0,0,.5),inset 0 1px 2px rgba(255,255,255,0.05);transform-style:preserve-3d;animation:loginIn .8s cubic-bezier(.16,1,.3,1) backwards;}
+@keyframes loginIn{from{opacity:0;transform:scale(0.9) rotateX(10deg) translateY(40px)}to{opacity:1;transform:scale(1) rotateX(0) translateY(0)}}
+.login-form{display:none;}
+.login-form.active{display:block;}
+
+/* FORMS */
+.form-group{margin-bottom:20px;transform-style:preserve-3d;}
+.form-group label{display:block;font-size:12px;font-weight:800;color:var(--text2);margin-bottom:8px;letter-spacing:.08em;text-transform:uppercase;text-shadow:0 1px 2px rgba(0,0,0,0.5);}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:14px 18px;border-radius:12px;border:1px solid rgba(255,255,255,0.05);background:rgba(0,0,0,0.2);color:var(--text);font-family:'DM Sans',sans-serif;font-size:15px;transition:all .3s cubic-bezier(.25,.8,.25,1);outline:none;box-shadow:inset 0 2px 6px rgba(0,0,0,0.6),0 1px 0 rgba(255,255,255,0.05);}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--accent);background:var(--bg3);box-shadow:inset 0 2px 4px rgba(0,0,0,0.4),0 0 0 4px rgba(255,107,43,.15);transform:translateY(-1px);}
+.form-group textarea{resize:vertical;min-height:90px;}
+
+.btn-primary{width:100%;padding:16px;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:12px;color:#fff;font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;cursor:pointer;transition:all .3s cubic-bezier(.25,.8,.25,1);letter-spacing:.05em;box-shadow:inset 0 2px 2px rgba(255,255,255,0.3),0 10px 20px rgba(255,107,43,.4);text-shadow:0 2px 4px rgba(0,0,0,0.3);}
+.btn-primary:hover{transform:translateY(-3px) scale(1.02);box-shadow:inset 0 2px 2px rgba(255,255,255,0.4),0 15px 30px rgba(255,107,43,.5);}
+.btn-primary:active{transform:translateY(1px);box-shadow:inset 0 4px 8px rgba(0,0,0,0.4),0 5px 10px rgba(255,107,43,.4);}
+.btn-primary:disabled{opacity:.6;cursor:not-allowed;transform:none;}
+
+/* DASHBOARD LAYOUT */
+.dash-layout{display:flex;min-height:100vh;}
+.sidebar{width:240px;background:linear-gradient(160deg,var(--bg2),var(--card));border-right:1px solid rgba(255,255,255,0.05);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:100;box-shadow:4px 0 20px rgba(0,0,0,0.3);}
+.sidebar-logo{padding:24px;border-bottom:1px solid rgba(255,255,255,0.03);display:flex;align-items:center;gap:14px;background:rgba(0,0,0,0.1);}
+.sidebar-logo .logo-sq{width:40px;height:40px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:inset 0 2px 2px rgba(255,255,255,0.3),0 5px 15px var(--glow);}
+.sidebar-logo span{font-family:'Rajdhani',sans-serif;font-size:1.4rem;font-weight:800;text-shadow:0 2px 4px rgba(0,0,0,0.5);}
+.sidebar-nav{flex:1;padding:16px 0;overflow-y:auto;}
+.nav-section-label{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);padding:16px 24px 8px;text-shadow:0 1px 1px rgba(0,0,0,0.5);}
+.nav-item{display:flex;align-items:center;gap:14px;padding:12px 24px;color:var(--text2);cursor:pointer;transition:all .3s cubic-bezier(.25,.8,.25,1);border-left:4px solid transparent;font-size:15px;font-weight:600;}
+.nav-item:hover{color:var(--text);background:linear-gradient(90deg,rgba(255,255,255,0.03),transparent);transform:translateX(5px);}
+.nav-item.active{color:var(--accent);background:linear-gradient(90deg,var(--glow),transparent);border-left-color:var(--accent);text-shadow:0 0 10px rgba(255,107,43,0.3);}
+.nav-item .icon{width:22px;text-align:center;font-size:18px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3));}
+.sidebar-footer{padding:16px;border-top:1px solid var(--border);}
+.sidebar-user{display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg3);border-radius:10px;border:1px solid var(--border);}
+.user-avatar{width:36px;height:36px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:#fff;}
+.user-info{flex:1;min-width:0;}
+.user-name{font-size:14px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.user-role{font-size:11px;color:var(--text3);}
+.logout-btn{background:none;border:none;cursor:pointer;color:var(--text3);font-size:18px;padding:4px;transition:color .2s;}
+.logout-btn:hover{color:var(--red);}
+
+/* MAIN */
+.main-content{margin-left:240px;flex:1;min-height:100vh;}
+.topbar{height:60px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 28px;gap:16px;position:sticky;top:0;z-index:50;}
+.topbar-title{font-family:'Rajdhani',sans-serif;font-size:1.4rem;font-weight:700;}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:12px;}
+.topbar-theme-btn{background:linear-gradient(135deg,var(--bg3),var(--card));border:1px solid rgba(255,255,255,0.05);color:var(--text);border-radius:10px;width:38px;height:38px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;transition:all .3s;box-shadow:inset 0 1px 2px rgba(255,255,255,0.05),2px 2px 6px rgba(0,0,0,0.3);}
+.topbar-theme-btn:hover{border-color:var(--accent);color:var(--accent);transform:translateY(-2px);box-shadow:inset 0 1px 2px rgba(255,255,255,0.1),4px 4px 10px rgba(0,0,0,0.4),0 0 10px var(--glow);}
+.page-content{padding:30px;animation:fadeUp .6s ease-out;}
+
+/* CARDS */
+.card{background:linear-gradient(135deg,var(--card) 0%,var(--bg3) 100%);border:1px solid rgba(255,255,255,0.05);border-radius:14px;padding:20px;transition:all .3s cubic-bezier(.25,.8,.25,1);box-shadow:inset 0 1px 0 rgba(255,255,255,0.05),-5px -5px 10px rgba(255,255,255,0.01),5px 5px 15px rgba(0,0,0,0.4);animation:fadeUp .6s cubic-bezier(.16,1,.3,1) both;}
+.card:hover{border-color:var(--accent);transform:translateY(-4px) scale(1.01);box-shadow:inset 0 1px 0 rgba(255,255,255,0.1),-8px -8px 20px rgba(255,255,255,0.02),12px 12px 25px rgba(0,0,0,0.5),0 0 20px var(--glow);}
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px) translateZ(-50px)}to{opacity:1;transform:translateY(0) translateZ(0)}}
+.card-title{font-size:1.1rem;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+
+/* STATS */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:20px;margin-bottom:24px;perspective:800px;}
+.stat-card{background:linear-gradient(145deg,var(--card),var(--bg2));border:1px solid rgba(255,255,255,0.06);border-radius:16px;padding:24px;position:relative;overflow:hidden;transition:all .4s cubic-bezier(.25,.8,.25,1);box-shadow:inset 2px 2px 4px rgba(255,255,255,0.02),inset -2px -2px 4px rgba(0,0,0,0.3),-4px -4px 12px rgba(255,255,255,0.01),8px 8px 20px rgba(0,0,0,0.4);transform-style:preserve-3d;animation:fadeUp .6s cubic-bezier(.16,1,.3,1) both backwards;}
+.stat-card:hover{transform:translateY(-6px) rotateX(4deg) rotateY(-2deg);box-shadow:inset 2px 2px 6px rgba(255,255,255,0.05),-8px -8px 20px rgba(255,255,255,0.02),12px 12px 30px rgba(0,0,0,0.6),0 10px 30px var(--glow);}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,transparent,var(--accent-color,var(--accent)),transparent);opacity:0.8;box-shadow:0 0 10px var(--accent-color,var(--accent));}
+.stat-icon{font-size:32px;margin-bottom:12px;filter:drop-shadow(2px 4px 6px rgba(0,0,0,0.4));transform:translateZ(20px);}
+.stat-value{font-family:'Rajdhani',sans-serif;font-size:2.4rem;font-weight:700;color:var(--accent-color,var(--accent));line-height:1;text-shadow:2px 4px 8px rgba(0,0,0,0.5);transform:translateZ(10px);}
+.stat-label{font-size:12px;color:var(--text2);margin-top:8px;text-transform:uppercase;letter-spacing:.08em;font-weight:600;transform:translateZ(5px);}
+
+/* BADGES */
+.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;}
+.badge-pending{background:rgba(234,179,8,.15);color:var(--yellow);}
+.badge-progress{background:rgba(59,130,246,.15);color:var(--blue);}
+.badge-done{background:rgba(34,197,94,.15);color:var(--green);}
+.badge-waiting{background:rgba(168,85,247,.15);color:var(--purple);}
+.badge-cancelled{background:rgba(239,68,68,.15);color:var(--red);}
+
+/* BUTTONS */
+.btn{padding:10px 20px;border-radius:10px;border:none;cursor:pointer;font-size:14px;font-weight:600;transition:all .3s cubic-bezier(.25,.8,.25,1);font-family:'DM Sans',sans-serif;display:inline-flex;align-items:center;gap:8px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.1),0 4px 10px rgba(0,0,0,0.2);position:relative;overflow:hidden;}
+.btn::after{content:'';position:absolute;top:0;left:-100%;width:50%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.2),transparent);transform:skewX(-20deg);transition:.5s;}
+.btn:hover::after{left:120%;}
+.btn:active{transform:translateY(2px);box-shadow:inset 0 2px 5px rgba(0,0,0,0.3),0 1px 2px rgba(0,0,0,0.2);}
+.btn-sm{padding:6px 14px;font-size:12px;border-radius:8px;}
+.btn-accent{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;box-shadow:inset 0 1px 1px rgba(255,255,255,0.3),0 6px 15px rgba(255,107,43,0.3);}
+.btn-accent:hover{background:linear-gradient(135deg,#ff7e45,#ffbc5c);transform:translateY(-2px);box-shadow:inset 0 1px 1px rgba(255,255,255,0.4),0 8px 25px rgba(255,107,43,0.5);}
+.btn-ghost{background:linear-gradient(135deg,rgba(255,255,255,0.02),transparent);color:var(--text);border:1px solid rgba(255,255,255,0.1);backdrop-filter:blur(4px);}
+.btn-ghost:hover{border-color:var(--accent);color:var(--accent);background:rgba(255,107,43,0.05);transform:translateY(-2px);box-shadow:0 6px 15px rgba(0,0,0,0.3);}
+.btn-green{background:rgba(34,197,94,.15);color:var(--green);border:1px solid rgba(34,197,94,.3);}
+.btn-green:hover{background:rgba(34,197,94,.25);}
+.btn-blue{background:rgba(59,130,246,.15);color:var(--blue);border:1px solid rgba(59,130,246,.3);}
+.btn-blue:hover{background:rgba(59,130,246,.25);}
+.btn-red{background:rgba(239,68,68,.15);color:var(--red);border:1px solid rgba(239,68,68,.3);}
+.btn-red:hover{background:rgba(239,68,68,.25);}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(8px);z-index:500;display:none;align-items:center;justify-content:center;padding:20px;perspective:1000px;}
+.modal-overlay.open{display:flex;}
+.modal{background:linear-gradient(145deg,var(--card),var(--bg2));border:1px solid rgba(255,255,255,0.08);border-radius:20px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;box-shadow:inset 0 1px 1px rgba(255,255,255,0.05),0 25px 60px rgba(0,0,0,.7),0 0 40px rgba(0,0,0,.5);animation:modalIn .4s cubic-bezier(.175,.885,.32,1.275) forwards;transform-origin:center bottom;}
+.modal-lg{max-width:700px;}
+@keyframes modalIn{0%{opacity:0;transform:rotateX(10deg) translateY(40px) scale(0.95)}100%{opacity:1;transform:rotateX(0) translateY(0) scale(1)}}
+.modal-header{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.modal-header h3{font-size:1.2rem;}
+.modal-close{background:none;border:none;cursor:pointer;color:var(--text3);font-size:20px;transition:color .2s;line-height:1;}
+.modal-close:hover{color:var(--text);}
+.modal-body{padding:24px;}
+.modal-footer{padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;}
+
+/* MISC */
+.search-bar{display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;transition:border-color .2s;}
+.search-bar:focus-within{border-color:var(--accent);}
+.search-bar input{flex:1;background:none;border:none;outline:none;color:var(--text);font-size:15px;font-family:'DM Sans',sans-serif;}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;}
+.divider{height:1px;background:var(--border);margin:20px 0;}
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+.empty-state{text-align:center;padding:48px 24px;}
+.empty-icon{font-size:48px;margin-bottom:16px;opacity:.4;}
+.empty-text{font-size:16px;color:var(--text2);}
+.empty-sub{font-size:13px;color:var(--text3);margin-top:6px;}
+.alert{padding:12px 16px;border-radius:10px;font-size:14px;display:flex;align-items:flex-start;gap:10px;}
+.alert-info{background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.3);color:var(--blue);}
+.alert-warn{background:rgba(234,179,8,.1);border:1px solid rgba(234,179,8,.3);color:var(--yellow);}
+.alert-success{background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);color:var(--green);}
+.page-tabs{display:flex;gap:4px;background:var(--bg2);padding:4px;border-radius:10px;border:1px solid var(--border);margin-bottom:20px;width:fit-content;flex-wrap:wrap;}
+.page-tab{padding:8px 18px;border-radius:7px;border:none;background:transparent;color:var(--text2);cursor:pointer;font-size:14px;font-weight:600;transition:all .2s;font-family:'DM Sans',sans-serif;}
+.page-tab.active{background:var(--accent);color:#fff;box-shadow:0 3px 8px rgba(255,107,43,.3);}
+.table-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;}
+th{text-align:left;font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;padding:10px 12px;border-bottom:1px solid var(--border);}
+td{padding:11px 12px;border-bottom:1px solid var(--border);font-size:14px;vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:var(--bg2);}
+.progress-wrap{background:var(--bg2);border-radius:100px;height:8px;overflow:hidden;}
+.progress-bar{height:100%;border-radius:100px;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .5s ease;}
+.vehicle-banner{background:linear-gradient(135deg,var(--bg3),var(--bg2));border:1px solid var(--border);border-radius:18px;padding:28px;display:flex;align-items:center;gap:24px;margin-bottom:24px;position:relative;overflow:hidden;}
+.vehicle-banner::before{content:'🚗';position:absolute;right:28px;font-size:80px;opacity:.08;line-height:1;}
+.vehicle-no{font-family:'Space Mono',monospace;font-size:1.8rem;font-weight:700;color:var(--accent);background:var(--glow);padding:8px 18px;border-radius:10px;border:1px solid rgba(255,107,43,.3);}
+.timeline{position:relative;padding-left:28px;}
+.timeline::before{content:'';position:absolute;left:8px;top:0;bottom:0;width:2px;background:var(--border);}
+.timeline-item{position:relative;margin-bottom:20px;}
+.timeline-dot{position:absolute;left:-24px;top:4px;width:14px;height:14px;border-radius:50%;border:2px solid var(--accent);background:var(--bg);}
+.timeline-dot.filled{background:var(--accent);}
+.timeline-content{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px 16px;}
+.timeline-title{font-weight:600;font-size:14px;}
+.timeline-time{font-size:12px;color:var(--text3);margin-top:3px;}
+.stars{display:flex;gap:4px;}
+.star{font-size:24px;cursor:pointer;color:var(--border2);transition:color .15s;}
+.star.active{color:var(--yellow);}
+.star:hover{color:var(--yellow);}
+.cred-box{background:var(--bg3);border:2px dashed var(--accent);border-radius:12px;padding:20px;margin-top:16px;text-align:center;}
+.cred-vehicle{font-family:'Space Mono',monospace;font-size:1.5rem;color:var(--accent);}
+.big-vehicle-input{width:100%;padding:18px 24px;font-family:'Space Mono',monospace;font-size:1.3rem;border-radius:14px;border:2px solid var(--border);background:var(--bg2);color:var(--text);outline:none;text-align:center;text-transform:uppercase;letter-spacing:.1em;transition:all .2s;}
+.big-vehicle-input:focus{border-color:var(--accent);box-shadow:0 0 0 4px rgba(255,107,43,.1);}
+@media(max-width:768px){.sidebar{transform:translateX(-100%)}.main-content{margin-left:0}.grid-2,.grid-3{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div id="toast-container"></div>
+<div id="global-loader">
+  <div class="loader-logo">⚙️ AutoCraft</div>
+  <div class="loader-spinner"></div>
+  <p style="color:var(--text3);font-size:14px;">Loading workshop system...</p>
+</div>
+
+<!-- ==================== LOGIN ==================== -->
+<div id="login-page" class="page">
+  <div class="login-bg"></div>
+  <div class="login-grid"></div>
+  <div class="login-container">
+    <div class="login-logo">
+      <div class="logo-icon">⚙️</div>
+      <h1>AutoCraft</h1>
+      <p>Workshop Management System</p>
+    </div>
+    <div class="login-tabs">
+      <button class="login-tab active" onclick="switchTab('owner', this)">🔑 Owner</button>
+      <button class="login-tab" onclick="switchTab('worker', this)">🔧 Worker</button>
+      <button class="login-tab" onclick="switchTab('customer', this)">🚗 Customer</button>
+    </div>
+    <div class="login-card">
+      <div id="tab-owner" class="login-form active">
+        <div class="form-group"><label>Username</label><input id="inp-owner-user" type="text" value="owner" placeholder="owner"></div>
+        <div class="form-group"><label>Password</label><input id="inp-owner-pass" type="password" value="owner123" placeholder="••••••••"></div>
+        <button class="btn-primary" onclick="doOwnerLogin()">Sign In as Owner</button>
+      </div>
+      <div id="tab-worker" class="login-form">
+        <div class="form-group"><label>Worker ID</label><input id="inp-worker-id" type="text" placeholder="e.g. WRK001"></div>
+        <div class="form-group"><label>Password</label><input id="inp-worker-pass" type="password" placeholder="••••••••"></div>
+        <button class="btn-primary" onclick="doWorkerLogin()">Sign In as Worker</button>
+      </div>
+      <div id="tab-customer" class="login-form">
+        <p style="color:var(--text2);font-size:14px;margin-bottom:18px;text-align:center;">Enter your vehicle number to check service status</p>
+        <div class="form-group"><label>Vehicle Number</label><input id="inp-cust-vehicle" class="big-vehicle-input" type="text" placeholder="KL 01 AB 1234" oninput="this.value=this.value.toUpperCase()"></div>
+        <button class="btn-primary" style="margin-top:16px;" onclick="doCustomerLogin()">View My Vehicle Status</button>
+      </div>
+    </div>
+    <p style="text-align:center;margin-top:14px;font-size:12px;color:var(--text3);">Owner: <strong style="color:var(--text2)">owner</strong> / <strong style="color:var(--text2)">owner123</strong></p>
+  </div>
+</div>
+
+<!-- ==================== OWNER PAGE ==================== -->
+<div id="owner-page" class="page">
+  <style>
+    .owner-shell { display:flex; height:100vh; overflow:hidden; background:#e8f0e9; font-family:'Inter',sans-serif; position:relative; }
+    .owner-shell::before {
+      content:''; position:absolute; inset:0; z-index:0; pointer-events:none;
+      background: radial-gradient(ellipse at 10% 20%, rgba(167,209,82,0.15) 0%, transparent 50%), radial-gradient(ellipse at 90% 80%, rgba(39,45,31,0.06) 0%, transparent 50%);
+      animation: meshMove 12s ease-in-out infinite alternate;
+    }
+    @keyframes meshMove { 0%{opacity:.8} 100%{opacity:1} }
+    .ac-sidebar { width:260px; flex-shrink:0; display:flex; flex-direction:column; margin:12px; margin-right:0; border-radius:28px; overflow:hidden; background:linear-gradient(175deg,#2a3120,#1e2418,#272d1f); box-shadow:8px 0 40px rgba(39,45,31,0.3),inset 0 1px 0 rgba(255,255,255,0.04); position:relative; z-index:10; animation:sidebarSlide .7s cubic-bezier(.16,1,.3,1) both; }
+    @keyframes sidebarSlide { from{transform:translateX(-100%);opacity:0} to{transform:translateX(0);opacity:1} }
+    .ac-sidebar .logo-area { padding:24px 20px; display:flex; align-items:center; gap:14px; border-bottom:1px solid rgba(167,209,82,0.08); }
+    .ac-sidebar .logo-sq { width:44px; height:44px; border-radius:14px; display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg,#a7d152,#8cbc3a); box-shadow:0 4px 20px rgba(167,209,82,0.4),inset 0 1px 1px rgba(255,255,255,0.3); font-size:22px; transition:transform .4s cubic-bezier(.34,1.56,.64,1); }
+    .ac-sidebar .logo-sq:hover { transform:rotate(15deg) scale(1.1); }
+    .ac-sidebar .logo-text { font-weight:800; font-size:1.35rem; color:#fff; letter-spacing:.5px; text-shadow:0 2px 10px rgba(0,0,0,0.3); }
+    .ac-nav { flex:1; padding:16px 12px; overflow-y:auto; }
+    .ac-nav-item { display:flex; align-items:center; gap:14px; padding:13px 18px; border-radius:14px; color:rgba(255,255,255,0.45); cursor:pointer; font-size:14px; font-weight:500; transition:all .35s cubic-bezier(.34,1.56,.64,1); margin-bottom:4px; position:relative; overflow:hidden; }
+    .ac-nav-item:hover { color:rgba(255,255,255,0.9); transform:translateX(6px); background:rgba(167,209,82,0.06); }
+    .ac-nav-item.active { color:#272d1f; font-weight:700; background:linear-gradient(135deg,#a7d152,#96c043); box-shadow:0 6px 24px rgba(167,209,82,0.4),inset 0 1px 1px rgba(255,255,255,0.25); transform:scale(1.02); }
+    .ac-nav-item .nav-icon { font-size:20px; min-width:24px; text-align:center; }
+    .ac-sidebar-bottom { padding:12px; border-top:1px solid rgba(167,209,82,0.06); }
+    .ac-user-card { display:flex; align-items:center; gap:12px; padding:14px; background:rgba(0,0,0,0.2); border-radius:16px; border:1px solid rgba(167,209,82,0.08); transition:all .3s ease; }
+    .ac-user-card:hover { border-color:rgba(167,209,82,0.2); background:rgba(0,0,0,0.3); }
+    .ac-user-avatar { width:42px; height:42px; border-radius:12px; display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg,#a7d152,#8cbc3a); color:#272d1f; font-weight:800; font-size:15px; box-shadow:0 3px 12px rgba(167,209,82,0.3); animation:avatarPulse 3s ease-in-out infinite; }
+    @keyframes avatarPulse { 0%,100%{box-shadow:0 3px 12px rgba(167,209,82,0.3)} 50%{box-shadow:0 3px 20px rgba(167,209,82,0.5)} }
+    .ac-main { flex:1; display:flex; flex-direction:column; min-width:0; position:relative; z-index:5; }
+    .ac-header { display:flex; align-items:center; justify-content:space-between; padding:20px 36px; animation:headerFade .5s ease both .3s; }
+    @keyframes headerFade { from{opacity:0;transform:translateY(-20px)} to{opacity:1;transform:translateY(0)} }
+    .ac-header-title { font-size:1.75rem; font-weight:800; color:#1a1c18; background:linear-gradient(135deg,#1a1c18,#3a4238); -webkit-background-clip:text; -webkit-text-fill-color:transparent; position:relative; }
+    .ac-header-title::after { content:''; position:absolute; bottom:-4px; left:0; width:40px; height:3px; background:linear-gradient(90deg,#a7d152,transparent); border-radius:2px; animation:titleLine 1s ease both .8s; }
+    @keyframes titleLine { from{width:0} to{width:40px} }
+    .ac-header-actions { display:flex; align-items:center; gap:16px; }
+    .ac-header-btn { width:42px; height:42px; border-radius:14px; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.7); backdrop-filter:blur(10px); color:#6b7280; transition:all .3s cubic-bezier(.34,1.56,.64,1); box-shadow:0 2px 8px rgba(0,0,0,0.06); }
+    .ac-header-btn:hover { transform:translateY(-3px) scale(1.08); background:#fff; color:#272d1f; box-shadow:0 8px 25px rgba(0,0,0,0.1); }
+    .ac-notif-dot { position:absolute; top:-2px; right:-2px; width:10px; height:10px; background:#ef4444; border-radius:50%; border:2px solid #e8f0e9; animation:notifBlink 2s ease-in-out infinite; }
+    @keyframes notifBlink { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.6;transform:scale(.8)} }
+    .ac-profile-chip { display:flex; align-items:center; gap:12px; padding:6px 6px 6px 14px; background:rgba(255,255,255,0.7); backdrop-filter:blur(10px); border-radius:16px; cursor:pointer; transition:all .3s ease; box-shadow:0 2px 8px rgba(0,0,0,0.06); }
+    .ac-profile-chip:hover { background:#fff; box-shadow:0 8px 25px rgba(0,0,0,0.1); transform:translateY(-2px); }
+    .ac-body { flex:1; overflow-y:auto; padding:0 36px 36px; scroll-behavior:smooth; }
+    .ac-body::-webkit-scrollbar { width:6px; }
+    .ac-body::-webkit-scrollbar-track { background:transparent; }
+    .ac-body::-webkit-scrollbar-thumb { background:#c1cfbc; border-radius:10px; }
+    .ac-live-clock { font-family:'Space Mono',monospace; font-size:13px; color:#6b7280; background:rgba(255,255,255,0.5); padding:6px 14px; border-radius:10px; backdrop-filter:blur(8px); letter-spacing:.5px; }
+    .ac-particles { position:absolute; inset:0; z-index:1; pointer-events:none; overflow:hidden; }
+    .ac-particle { position:absolute; border-radius:50%; background:rgba(167,209,82,0.15); animation:floatP linear infinite; }
+    @keyframes floatP { 0%{transform:translateY(100vh) scale(0);opacity:0} 10%{opacity:1} 90%{opacity:1} 100%{transform:translateY(-10vh) scale(1);opacity:0} }
+    .ac-stagger-1{animation:stUp .6s cubic-bezier(.16,1,.3,1) both .1s}
+    .ac-stagger-2{animation:stUp .6s cubic-bezier(.16,1,.3,1) both .2s}
+    .ac-stagger-3{animation:stUp .6s cubic-bezier(.16,1,.3,1) both .3s}
+    .ac-stagger-4{animation:stUp .6s cubic-bezier(.16,1,.3,1) both .4s}
+    .ac-stagger-5{animation:stUp .6s cubic-bezier(.16,1,.3,1) both .5s}
+    .ac-stagger-6{animation:stUp .6s cubic-bezier(.16,1,.3,1) both .6s}
+    @keyframes stUp { from{opacity:0;transform:translateY(30px) scale(.95)} to{opacity:1;transform:translateY(0) scale(1)} }
+    #owner-page .prem-stat { background:rgba(255,255,255,0.85); backdrop-filter:blur(16px); border:1px solid rgba(255,255,255,0.6); border-radius:24px; padding:28px; position:relative; overflow:hidden; transition:all .4s cubic-bezier(.34,1.56,.64,1); box-shadow:0 4px 20px rgba(0,0,0,0.04),inset 0 1px 0 rgba(255,255,255,0.8); }
+    #owner-page .prem-stat:hover { transform:translateY(-8px) scale(1.02); box-shadow:0 20px 50px rgba(0,0,0,0.08); }
+    #owner-page .prem-stat .shimmer { position:absolute; top:0; left:-150%; width:150%; height:100%; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.4),transparent); animation:shimmer 3s ease-in-out infinite; pointer-events:none; }
+    @keyframes shimmer { 0%{left:-150%} 50%{left:150%} 100%{left:150%} }
+    #owner-page .prem-card { background:rgba(255,255,255,0.85); backdrop-filter:blur(16px); border:1px solid rgba(255,255,255,0.6); border-radius:24px; padding:28px; transition:all .35s cubic-bezier(.34,1.56,.64,1); box-shadow:0 4px 20px rgba(0,0,0,0.04),inset 0 1px 0 rgba(255,255,255,0.8); }
+    #owner-page .prem-card:hover { transform:translateY(-4px); box-shadow:0 16px 40px rgba(0,0,0,0.08); }
+    .ac-btn-green { padding:10px 20px; border:none; cursor:pointer; background:linear-gradient(135deg,#a7d152,#96c043); color:#272d1f; font-weight:700; font-size:13px; border-radius:12px; transition:all .3s cubic-bezier(.34,1.56,.64,1); box-shadow:0 4px 16px rgba(167,209,82,0.3),inset 0 1px 0 rgba(255,255,255,0.3); position:relative; overflow:hidden; font-family:'Inter',sans-serif; }
+    .ac-btn-green::after { content:''; position:absolute; top:0; left:-100%; width:60%; height:100%; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.3),transparent); transform:skewX(-20deg); transition:.6s; }
+    .ac-btn-green:hover { transform:translateY(-3px) scale(1.04); box-shadow:0 8px 30px rgba(167,209,82,0.45); }
+    .ac-btn-green:hover::after { left:120%; }
+  </style>
+
+  <div class="owner-shell">
+    <div class="ac-particles">
+      <div class="ac-particle" style="width:6px;height:6px;left:10%;animation-duration:18s;animation-delay:0s;"></div>
+      <div class="ac-particle" style="width:4px;height:4px;left:25%;animation-duration:22s;animation-delay:3s;"></div>
+      <div class="ac-particle" style="width:8px;height:8px;left:45%;animation-duration:16s;animation-delay:6s;"></div>
+      <div class="ac-particle" style="width:5px;height:5px;left:65%;animation-duration:20s;animation-delay:2s;"></div>
+      <div class="ac-particle" style="width:3px;height:3px;left:80%;animation-duration:24s;animation-delay:8s;"></div>
+      <div class="ac-particle" style="width:7px;height:7px;left:92%;animation-duration:19s;animation-delay:4s;"></div>
+    </div>
+    <aside class="ac-sidebar">
+      <div class="logo-area"><div class="logo-sq">⚙️</div><span class="logo-text">AutoCraft</span></div>
+      <nav class="ac-nav" id="owner-sidebar-nav">
+        <div class="ac-nav-item active" onclick="ownerNav('dashboard',this)"><span class="nav-icon">📊</span><span class="nav-text">Dashboard</span></div>
+        <div class="ac-nav-item" onclick="ownerNav('customers',this)"><span class="nav-icon">👤</span><span class="nav-text">Customers</span></div>
+        <div class="ac-nav-item" onclick="ownerNav('jobs',this)"><span class="nav-icon">🔧</span><span class="nav-text">Vehicles & Jobs</span></div>
+        <div class="ac-nav-item" onclick="ownerNav('workers',this)"><span class="nav-icon">👷</span><span class="nav-text">Workers Staff</span></div>
+        <div class="ac-nav-item" onclick="ownerNav('billing',this)"><span class="nav-icon">💳</span><span class="nav-text">Billing</span></div>
+      </nav>
+      <div class="ac-sidebar-bottom">
+        <div class="ac-nav-item" onclick="toggleTheme()" style="margin-bottom:4px;"><span class="nav-icon">🌙</span><span class="nav-text">Toggle Theme</span></div>
+        <div class="ac-nav-item" onclick="doLogout()" style="color:rgba(248,113,113,0.7);margin-bottom:8px;"><span class="nav-icon">⏻</span><span class="nav-text">Log out</span></div>
+        <div class="ac-user-card">
+          <div class="ac-user-avatar">OA</div>
+          <div style="min-width:0;flex:1;"><div style="color:#fff;font-size:14px;font-weight:600;">Owner</div><div style="color:rgba(255,255,255,0.35);font-size:11px;">Administrator</div></div>
+        </div>
+      </div>
+    </aside>
+    <main class="ac-main">
+      <header class="ac-header">
+        <h1 class="ac-header-title" id="owner-title">Dashboard</h1>
+        <div class="ac-header-actions">
+          <div class="ac-live-clock" id="ac-clock"></div>
+          <button class="ac-header-btn" onclick="toggleTheme()" title="Theme"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg></button>
+          <button class="ac-header-btn" style="position:relative;" title="Notifications"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg><span class="ac-notif-dot"></span></button>
+          <div class="ac-profile-chip"><div><div style="font-size:13px;font-weight:600;color:#1a1c18;">Owner</div><div style="font-size:11px;color:#9ca3af;">Admin</div></div><div class="ac-user-avatar" style="width:36px;height:36px;border-radius:12px;font-size:13px;">OA</div></div>
+        </div>
+      </header>
+      <div class="ac-body" id="owner-content"><!-- Dynamic Content --></div>
+    </main>
+  </div>
+</div>
+<script>
+function updateACClock(){const el=document.getElementById('ac-clock');if(el){const now=new Date();el.textContent=now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'});}}
+setInterval(updateACClock,1000);updateACClock();
+</script>
+
+<!-- ==================== WORKER PAGE ==================== -->
+<div id="worker-page" class="page">
+  <div class="dash-layout">
+    <aside class="sidebar">
+      <div class="sidebar-logo"><div class="logo-sq">🔧</div><span>AutoCraft</span></div>
+      <nav class="sidebar-nav">
+        <div class="nav-item active" onclick="workerNav('jobs',this)"><span class="icon">📋</span> My Jobs</div>
+        <div class="nav-item" onclick="workerNav('history',this)"><span class="icon">📅</span> History</div>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="sidebar-user">
+          <div class="user-avatar" id="w-avatar">W</div>
+          <div class="user-info"><div class="user-name" id="w-name">Worker</div><div class="user-role" id="w-role">Mechanic</div></div>
+          <button class="logout-btn" onclick="doLogout()" title="Logout">⏏</button>
+        </div>
+      </div>
+    </aside>
+    <main class="main-content">
+      <div class="topbar">
+        <span class="topbar-title" id="worker-title">My Jobs</span>
+        <div class="topbar-right"><button class="topbar-theme-btn" onclick="toggleTheme()">🌙</button></div>
+      </div>
+      <div class="page-content" id="worker-content"></div>
+    </main>
+  </div>
+</div>
+
+<!-- ==================== CUSTOMER PAGE ==================== -->
+<div id="customer-page" class="page">
+  <div class="dash-layout">
+    <aside class="sidebar">
+      <div class="sidebar-logo"><div class="logo-sq">🚗</div><span>AutoCraft</span></div>
+      <nav class="sidebar-nav">
+        <div class="nav-item active" onclick="custNav('status',this)"><span class="icon">📍</span> Vehicle Status</div>
+        <div class="nav-item" onclick="custNav('history',this)"><span class="icon">📅</span> Service History</div>
+        <div class="nav-item" onclick="custNav('review',this)"><span class="icon">⭐</span> Review</div>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="sidebar-user">
+          <div class="user-avatar" id="c-avatar">C</div>
+          <div class="user-info"><div class="user-name" id="c-name">Customer</div><div class="user-role" id="c-vehicle">Vehicle No</div></div>
+          <button class="logout-btn" onclick="doLogout()" title="Logout">⏏</button>
+        </div>
+      </div>
+    </aside>
+    <main class="main-content">
+      <div class="topbar">
+        <span class="topbar-title" id="cust-title">Vehicle Status</span>
+        <div class="topbar-right"><button class="topbar-theme-btn" onclick="toggleTheme()">🌙</button></div>
+      </div>
+      <div class="page-content" id="cust-content"></div>
+    </main>
+  </div>
+</div>
+
+<!-- ==================== MODALS ==================== -->
+
+<!-- Add Customer -->
+<div class="modal-overlay" id="modal-add-customer">
+  <div class="modal">
+    <div class="modal-header"><h3>➕ Add New Customer</h3><button class="modal-close" onclick="closeModal('modal-add-customer')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label>Full Name *</label><input id="nc-name" type="text" placeholder="Customer full name"></div>
+      <div class="form-group"><label>Phone Number</label><input id="nc-phone" type="text" placeholder="+91 XXXXX XXXXX"></div>
+      <div class="form-group"><label>Vehicle Number *</label><input id="nc-vehicle" type="text" placeholder="KL 01 AB 1234" oninput="this.value=this.value.toUpperCase()"></div>
+      <div class="form-group"><label>Vehicle Model</label><input id="nc-model" type="text" placeholder="Honda City 2020"></div>
+      <div id="nc-creds" style="display:none;" class="cred-box">
+        <p style="font-size:13px;color:var(--text2);margin-bottom:8px;">Customer Login (Vehicle Number)</p>
+        <div class="cred-vehicle" id="nc-cred-display">—</div>
+        <p style="font-size:12px;color:var(--text3);margin-top:8px;">Customer logs in using their Vehicle Number only</p>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-add-customer')">Cancel</button>
+      <button class="btn btn-accent" onclick="saveCustomer()">Add Customer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Worker -->
+<div class="modal-overlay" id="modal-add-worker">
+  <div class="modal">
+    <div class="modal-header"><h3>➕ Add Worker</h3><button class="modal-close" onclick="closeModal('modal-add-worker')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label>Full Name *</label><input id="nw-name" type="text" placeholder="Worker name"></div>
+      <div class="form-group"><label>Specialization</label><input id="nw-spec" type="text" placeholder="e.g. Engine, AC, Electrician..."></div>
+      <div class="form-group"><label>Phone</label><input id="nw-phone" type="text" placeholder="+91 XXXXX XXXXX"></div>
+      <div class="form-group"><label>Worker ID *</label><input id="nw-id" type="text" placeholder="e.g. WRK001" oninput="this.value=this.value.toUpperCase()"></div>
+      <div class="form-group"><label>Password *</label><input id="nw-pass" type="password" placeholder="Set login password"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-add-worker')">Cancel</button>
+      <button class="btn btn-accent" onclick="saveWorker()">Add Worker</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Job -->
+<div class="modal-overlay" id="modal-add-job">
+  <div class="modal modal-lg">
+    <div class="modal-header"><h3>🔧 Create New Job</h3><button class="modal-close" onclick="closeModal('modal-add-job')">✕</button></div>
+    <div class="modal-body">
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Customer *</label>
+          <input id="job-cust-search" type="text" placeholder="Search name or vehicle no..." oninput="searchCust(this.value)">
+          <div id="job-cust-results"></div>
+          <input type="hidden" id="job-cust-id">
+        </div>
+        <div class="form-group">
+          <label>Assign Worker</label>
+          <select id="job-worker-select"><option value="">Select worker...</option></select>
+        </div>
+      </div>
+      <div id="job-vehicle-info" style="display:none;" class="alert alert-info" style="margin-bottom:16px;"></div>
+      <div class="form-group"><label>Job Title *</label><input id="job-title" type="text" placeholder="e.g. Engine overhaul, AC repair..."></div>
+      <div class="form-group"><label>Description</label><textarea id="job-desc" placeholder="Details of work to be done..."></textarea></div>
+      <div class="grid-2">
+        <div class="form-group"><label>Estimated Amount (₹)</label><input id="job-estimate" type="number" placeholder="0" min="0"></div>
+        <div class="form-group">
+          <label>Priority</label>
+          <select id="job-priority">
+            <option value="normal">Normal</option>
+            <option value="urgent">Urgent</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-add-job')">Cancel</button>
+      <button class="btn btn-accent" onclick="saveJob()">Create Job</button>
+    </div>
+  </div>
+</div>
+
+<!-- Update Job (Owner) -->
+<div class="modal-overlay" id="modal-update-job">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-header"><h3>📝 Update Job Status</h3><button class="modal-close" onclick="closeModal('modal-update-job')">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="uj-id">
+      <input type="hidden" id="uj-phone">
+      <input type="hidden" id="uj-cust-name">
+      <input type="hidden" id="uj-title">
+      <div id="uj-worker-alert" style="display:none;background:rgba(234,179,8,.1);border:1px solid rgba(234,179,8,.4);border-radius:10px;padding:12px;margin-bottom:14px;font-size:13px;color:var(--yellow);">
+        🔔 Worker has marked this job as done — please review and confirm.
+      </div>
+      <div class="form-group" id="uj-assign-wrap">
+        <label>Assign Worker</label>
+        <select id="uj-worker-select"><option value="">Select worker...</option></select>
+      </div>
+      <div class="form-group">
+        <label>Status</label>
+        <select id="uj-status">
+          <option value="pending">⏳ Pending</option>
+          <option value="in_progress">⚙️ In Progress</option>
+          <option value="waiting_parts">📦 Waiting for Parts</option>
+          <option value="owner_review">🔔 Worker Done — Reviewing</option>
+          <option value="done">✅ Completed</option>
+          <option value="cancelled">❌ Cancelled</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Update Notes (Visible to Customer)</label>
+        <textarea id="uj-notes" placeholder="Detailed notes about the work status..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-update-job')">Cancel</button>
+      <button class="btn btn-accent" onclick="submitUpdate()">Update &amp; Send WhatsApp 📱</button>
+    </div>
+  </div>
+</div>
+
+<!-- Worker: Mark Done -->
+<div class="modal-overlay" id="modal-worker-done">
+  <div class="modal">
+    <div class="modal-header"><h3>✅ Mark Job as Done</h3><button class="modal-close" onclick="closeModal('modal-worker-done')">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="wd-id">
+      <div class="alert alert-info" style="margin-bottom:16px;">ℹ️ This notifies the owner for review. The owner will confirm and update the customer.</div>
+      <div class="form-group"><label>Work Completed — Summary *</label><textarea id="wd-notes" placeholder="Describe what was done..."></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-worker-done')">Cancel</button>
+      <button class="btn btn-accent" onclick="submitWorkerDone()">🔔 Notify Owner</button>
+    </div>
+  </div>
+</div>
+
+<!-- Billing -->
+<div class="modal-overlay" id="modal-billing">
+  <div class="modal modal-lg">
+    <div class="modal-header"><h3>💰 Generate Invoice</h3><button class="modal-close" onclick="closeModal('modal-billing')">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="bill-job-id">
+      <div id="bill-job-info" class="alert alert-info" style="margin-bottom:16px;"></div>
+      <div class="grid-2">
+        <div class="form-group"><label>Labour Charges (₹)</label><input id="bill-labour" type="number" placeholder="0" min="0" oninput="calcBill()"></div>
+        <div class="form-group"><label>Parts Cost (₹)</label><input id="bill-parts" type="number" placeholder="0" min="0" oninput="calcBill()"></div>
+        <div class="form-group"><label>Other Charges (₹)</label><input id="bill-other" type="number" placeholder="0" min="0" oninput="calcBill()"></div>
+        <div class="form-group"><label>Discount (₹)</label><input id="bill-discount" type="number" placeholder="0" min="0" oninput="calcBill()"></div>
+      </div>
+      <div style="background:var(--bg2);border-radius:10px;padding:16px;margin-bottom:16px;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:var(--text2)">Subtotal</span><span id="bill-subtotal">₹0</span></div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:var(--text2)">Discount</span><span id="bill-disc-display" style="color:var(--red)">- ₹0</span></div>
+        <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:10px;margin-top:10px;">
+          <span style="font-weight:700;font-size:16px;">Total</span>
+          <span id="bill-total" style="font-family:'Space Mono',monospace;font-size:1.4rem;font-weight:700;color:var(--accent);">₹0</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Payment Status</label>
+        <select id="bill-pay-status">
+          <option value="pending">⏳ Pending</option>
+          <option value="paid">✅ Paid</option>
+          <option value="partial">🕐 Partial</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Notes</label><textarea id="bill-notes" placeholder="Any billing notes..."></textarea></div>
+      <!-- UPI Section -->
+      <div style="border:1px solid var(--border);border-radius:12px;padding:16px;margin-top:8px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <span style="font-weight:700;">📱 UPI QR Payment</span>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;text-transform:none;letter-spacing:0;font-size:13px;font-weight:500;">
+            <input type="checkbox" id="bill-upi-toggle" onchange="toggleUPI(this.checked)" style="width:auto;"> Show QR for Customer
+          </label>
+        </div>
+        <div id="bill-upi-section" style="display:none;">
+          <div class="form-group"><label>Your UPI ID</label><input id="bill-upi-id" type="text" placeholder="e.g. workshop@upi or 9876543210@paytm" oninput="updateQR()"></div>
+          <div style="text-align:center;margin-top:8px;">
+            <div id="bill-qr-wrap" style="background:white;padding:10px;border-radius:12px;display:inline-block;min-width:120px;min-height:120px;"></div>
+            <div id="bill-upi-display" style="font-size:12px;color:var(--text3);margin-top:8px;"></div>
+          </div>
+          <button class="btn btn-green" style="width:100%;margin-top:14px;padding:11px;" onclick="confirmUPIPaid()">✅ Confirm Payment Received</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-billing')">Cancel</button>
+      <button class="btn btn-accent" onclick="saveBilling()">💾 Save Invoice</button>
+    </div>
+  </div>
+</div>
+
+<!-- Customer Pay Modal -->
+<div class="modal-overlay" id="modal-cust-pay">
+  <div class="modal" style="max-width:400px;text-align:center;">
+    <div class="modal-body" style="padding:32px 24px;">
+      <div style="font-size:48px;margin-bottom:10px;">📱</div>
+      <h3 style="margin-bottom:6px;">Scan &amp; Pay</h3>
+      <p style="color:var(--text2);font-size:14px;margin-bottom:20px;">Use PhonePe, GPay, Paytm or any UPI app</p>
+      <div id="cp-qr-wrap" style="background:white;padding:12px;border-radius:14px;display:inline-flex;align-items:center;justify-content:center;margin-bottom:14px;min-width:164px;min-height:164px;"></div>
+      <div id="cp-amount" style="font-family:'Space Mono',monospace;font-size:2rem;color:var(--accent);font-weight:700;margin-bottom:4px;">₹0</div>
+      <div id="cp-upi" style="font-size:12px;color:var(--text3);margin-bottom:18px;"></div>
+      <div class="alert alert-info" style="margin-bottom:16px;text-align:left;font-size:13px;">After paying in your UPI app, tap the button below to confirm.</div>
+      <button class="btn btn-green" style="width:100%;padding:13px;font-size:15px;font-weight:700;" onclick="confirmCustPayment()">✅ I Have Paid</button>
+      <button class="btn btn-ghost" style="width:100%;padding:10px;margin-top:8px;" onclick="closeModal('modal-cust-pay')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Payment Success -->
+<div class="modal-overlay" id="modal-pay-success">
+  <div class="modal" style="max-width:360px;text-align:center;">
+    <div class="modal-body" style="padding:40px 24px;">
+      <div style="font-size:60px;animation:popIn .4s ease;display:inline-block;">✅</div>
+      <h2 style="margin:16px 0 8px;">Payment Confirmed!</h2>
+      <p style="color:var(--text2);margin-bottom:24px;">Invoice marked as paid and job completed.</p>
+      <button class="btn btn-accent" style="width:100%;" onclick="closeModal('modal-pay-success');closeModal('modal-billing');loadOwnerBilling()">Done</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// MONGODB BRIDGE (Replaces Supabase calls)
+// ============================================================
+const sb = {
+  from: function(table) {
+    let queryParams = {};
+    let isSingle = false;
+
+    return {
+      select: function(fields, options = {}) {
+        if (options.count) queryParams._count = options.count;
+        return this;
+      },
+      eq: function(key, val) { 
+        queryParams[key] = val; 
+        return this; 
+      },
+      neq: function(key, val) { 
+        queryParams[key + '.neq'] = val; 
+        return this; 
+      },
+      ilike: function(key, val) {
+        queryParams[key + '.ilike'] = val;
+        return this;
+      },
+      in: function(key, vals) {
+          queryParams[key + '.in'] = `(${vals.map(v => `"${v}"`).join(',')})`;
+          return this;
+      },
+      not: function(key, op, val) {
+          queryParams[key + '.' + op] = val;
+          return this;
+      },
+      or: function(q) {
+          // Simplistic implementation for OR filters
+          queryParams._or = q;
+          return this;
+      },
+      order: function(field, options = {}) { return this; },
+      limit: function(n) { queryParams._limit = n; return this; },
+      single: function() { isSingle = true; return this; },
+
+      // Async Terminators
+      then: async function(resolve, reject) {
+        try {
+          const q = new URLSearchParams(queryParams).toString();
+          const res = await fetch(`/api/${table}?${q}`);
+          const json = await res.json();
+          if (isSingle) {
+              resolve({ data: json.data?.[0] || null, error: json.error });
+          } else {
+              resolve({ data: json.data, error: json.error, count: json.data?.length });
+          }
+        } catch (e) {
+          resolve({ data: null, error: e });
+        }
+      },
+
+      insert: async function(row) {
+        try {
+          const res = await fetch(`/api/${table}`, {
+            method: 'POST',
+            body: JSON.stringify(row),
+            headers: { 'Content-Type': 'application/json' }
+          });
+          const json = await res.json();
+          return { data: json.data, error: json.error };
+        } catch (e) { return { data: null, error: e }; }
+      },
+
+      update: async function(row) {
+        try {
+          const q = new URLSearchParams(queryParams).toString();
+          const res = await fetch(`/api/${table}?${q}`, {
+            method: 'PATCH',
+            body: JSON.stringify(row),
+            headers: { 'Content-Type': 'application/json' }
+          });
+          const json = await res.json();
+          return { data: json.data, error: json.error };
+        } catch (e) { return { data: null, error: e }; }
+      },
+
+      upsert: async function(row, options = {}) {
+        try {
+          const res = await fetch(`/api/${table}`, {
+            method: 'PUT',
+            body: JSON.stringify(row),
+            headers: { 'Content-Type': 'application/json' }
+          });
+          const json = await res.json();
+          return { data: json.data, error: json.error };
+        } catch (e) { return { data: null, error: e }; }
+      }
+    };
+  }
+};
+
+let currentUser = null, currentWorker = null, currentCustomer = null;
+let selectedCust = null, pollTimer = null, billQRInstance = null, custQRInstance = null;
+let reviewStars = 0;
+
+window.addEventListener('DOMContentLoaded', async () => {
+  await new Promise(r => setTimeout(r, 600));
+  document.getElementById('global-loader').style.display = 'none';
+  showPage('login-page');
+  applyTheme();
+});
+
+// ── THEME ─────────────────────────────────────────────────────
+function toggleTheme() {
+  const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('ac-theme', next);
+  document.querySelectorAll('.topbar-theme-btn').forEach(b => b.textContent = next === 'dark' ? '☀️' : '🌙');
+}
+function applyTheme() {
+  const t = localStorage.getItem('ac-theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', t);
+  document.querySelectorAll('.topbar-theme-btn').forEach(b => b.textContent = t === 'dark' ? '☀️' : '🌙');
+}
+
+// ── PAGES ─────────────────────────────────────────────────────
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  const el = document.getElementById(id);
+  if (el) el.classList.add('active');
+}
+
+// ── TOAST ─────────────────────────────────────────────────────
+function toast(msg, type = 'info') {
+  const el = document.createElement('div');
+  el.className = 'toast ' + type;
+  const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️';
+  el.innerHTML = '<span>' + icon + '</span><span>' + msg + '</span>';
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(() => el.remove(), 4000);
+}
+
+// ── MODALS ────────────────────────────────────────────────────
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// ── LOGIN TABS ────────────────────────────────────────────────
+function switchTab(role, el) {
+  document.querySelectorAll('.login-tab').forEach(t => t.classList.remove('active'));
+  if(el) el.classList.add('active');
+  else {
+    // Fallback if el is not provided (from old onclick="switchTab('owner')")
+    const tabs = document.querySelectorAll('.login-tab');
+    if(role === 'owner') tabs[0].classList.add('active');
+    else if(role === 'worker') tabs[1].classList.add('active');
+    else if(role === 'customer') tabs[2].classList.add('active');
+  }
+  document.querySelectorAll('.login-form').forEach(f => f.classList.remove('active'));
+  document.getElementById('tab-' + role).classList.add('active');
+}
+
+// ── OWNER LOGIN ───────────────────────────────────────────────
+function doOwnerLogin() {
+  const p = document.getElementById('inp-owner-pass').value.trim();
+  if (p === 'owner123') {
+    currentUser = { role: 'owner' };
+    showPage('owner-page');
+    ownerNav('dashboard', document.querySelector('#owner-page .sidebar .nav-item'));
+    toast('Welcome back, Owner!', 'success');
+  } else {
+    toast('Invalid password', 'error');
+  }
+}
+
+// ── WORKER LOGIN ──────────────────────────────────────────────
+async function doWorkerLogin() {
+  const wid = document.getElementById('inp-worker-id').value.trim().toUpperCase();
+  const pass = document.getElementById('inp-worker-pass').value.trim();
+  if (!wid || !pass) { toast('Enter Worker ID and password', 'error'); return; }
+  try {
+    const { data, error } = await sb.from('workers').select('*').eq('worker_id', wid).eq('password', pass).single();
+    if (error || !data) { toast('Invalid Worker ID or password', 'error'); return; }
+    currentWorker = data;
+    currentUser = { role: 'worker' };
+    document.getElementById('w-avatar').textContent = data.name[0].toUpperCase();
+    document.getElementById('w-name').textContent = data.name;
+    document.getElementById('w-role').textContent = data.specialization || 'Worker';
+    showPage('worker-page');
+    workerNav('jobs', document.querySelector('#worker-page .nav-item'));
+    toast('Welcome, ' + data.name + '!', 'success');
+  } catch (e) { toast('Connection error: ' + e.message, 'error'); }
+}
+
+// ── CUSTOMER LOGIN ────────────────────────────────────────────
+async function doCustomerLogin() {
+  const vno = document.getElementById('inp-cust-vehicle').value.trim().toUpperCase();
+  if (!vno) { toast('Enter your vehicle number', 'error'); return; }
+  try {
+    const { data, error } = await sb.from('customers').select('*').eq('vehicle_number', vno).single();
+    if (error || !data) { toast('Vehicle not found. Contact the workshop to register.', 'error'); return; }
+    currentCustomer = data;
+    currentUser = { role: 'customer' };
+    document.getElementById('c-avatar').textContent = data.name[0].toUpperCase();
+    document.getElementById('c-name').textContent = data.name;
+    document.getElementById('c-vehicle').textContent = data.vehicle_number;
+    showPage('customer-page');
+    custNav('status', document.querySelector('#customer-page .nav-item'));
+    startPoll();
+    toast('Welcome, ' + data.name + '!', 'success');
+  } catch (e) { toast('Connection error: ' + e.message, 'error'); }
+}
+
+function doLogout() {
+  currentUser = null; currentWorker = null; currentCustomer = null; selectedCust = null;
+  stopPoll();
+  showPage('login-page');
+  document.getElementById('inp-worker-id').value = '';
+  document.getElementById('inp-worker-pass').value = '';
+  document.getElementById('inp-cust-vehicle').value = '';
+  switchTab('owner');
+  toast('Logged out', 'info');
+}
+
+function ownerNav(section, el) {
+  document.querySelectorAll('#owner-page .ac-nav-item').forEach(n => n.classList.remove('active'));
+  if (el) el.classList.add('active');
+  const titles = { dashboard:'Dashboard', customers:'Customers', jobs:'Vehicles & Jobs', workers:'Workers Staff', billing:'Billing' };
+  document.getElementById('owner-title').textContent = titles[section] || section;
+  if (section === 'dashboard') loadOwnerDashboard();
+  else if (section === 'customers') loadOwnerCustomers();
+  else if (section === 'jobs') loadOwnerJobs();
+  else if (section === 'workers') loadOwnerWorkers();
+  else if (section === 'billing') loadOwnerBilling();
+}
+
+async function loadOwnerDashboard() {
+  const el = document.getElementById('owner-content');
+  el.innerHTML = loading();
+  try {
+    const [r1, r2, r3, r4] = await Promise.all([
+      sb.from('customers').select('id', { count: 'exact' }),
+      sb.from('jobs').select('id', { count: 'exact' }),
+      sb.from('workers').select('id', { count: 'exact' }),
+      sb.from('bills').select('*')
+    ]);
+    const revenue = (r4.data || []).filter(b => b.payment_status === 'paid').reduce((s, b) => s + (b.total_amount || 0), 0);
+    const pending = (r4.data || []).filter(b => b.payment_status === 'pending').reduce((s, b) => s + (b.total_amount || 0), 0);
+
+    el.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-bottom:28px;">
+        <div class="prem-stat ac-stagger-1" style="border-top:4px solid #3b82f6;">
+          <div class="shimmer"></div>
+          <div style="font-size:36px;margin-bottom:8px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.1));">👥</div>
+          <div style="font-family:'Inter',sans-serif;font-size:2.5rem;font-weight:800;color:#3b82f6;line-height:1;">${r1.count || 0}</div>
+          <div style="font-size:12px;color:#6b7280;margin-top:8px;text-transform:uppercase;letter-spacing:.08em;font-weight:600;">Customers</div>
+        </div>
+        <div class="prem-stat ac-stagger-2" style="border-top:4px solid #eab308;">
+          <div class="shimmer" style="animation-delay:.5s"></div>
+          <div style="font-size:36px;margin-bottom:8px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.1));">🔧</div>
+          <div style="font-family:'Inter',sans-serif;font-size:2.5rem;font-weight:800;color:#eab308;line-height:1;">${r2.count || 0}</div>
+          <div style="font-size:12px;color:#6b7280;margin-top:8px;text-transform:uppercase;letter-spacing:.08em;font-weight:600;">Total Jobs</div>
+        </div>
+        <div class="prem-stat ac-stagger-3" style="border-top:4px solid #22c55e;">
+          <div class="shimmer" style="animation-delay:1s"></div>
+          <div style="font-size:36px;margin-bottom:8px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.1));">👷</div>
+          <div style="font-family:'Inter',sans-serif;font-size:2.5rem;font-weight:800;color:#22c55e;line-height:1;">${r3.count || 0}</div>
+          <div style="font-size:12px;color:#6b7280;margin-top:8px;text-transform:uppercase;letter-spacing:.08em;font-weight:600;">Workers Staff</div>
+        </div>
+        <div class="prem-stat ac-stagger-4" style="border-top:4px solid #f97316;">
+          <div class="shimmer" style="animation-delay:1.5s"></div>
+          <div style="font-size:36px;margin-bottom:8px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.1));">💰</div>
+          <div style="font-family:'Inter',sans-serif;font-size:2.5rem;font-weight:800;color:#f97316;line-height:1;">₹${revenue.toLocaleString()}</div>
+          <div style="font-size:12px;color:#6b7280;margin-top:8px;text-transform:uppercase;letter-spacing:.08em;font-weight:600;">Revenue</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:28px;">
+        <div class="prem-card ac-stagger-5">
+          <div style="font-weight:800;font-size:1.1rem;margin-bottom:16px;color:#1a1c18;display:flex;align-items:center;gap:8px;">🔔 Worker Notifications</div>
+          <div id="dash-worker-notifs"><div class="loader-spinner" style="margin:8px auto;"></div></div>
+        </div>
+        <div class="prem-card ac-stagger-5">
+          <div style="font-weight:800;font-size:1.1rem;margin-bottom:16px;color:#1a1c18;display:flex;align-items:center;gap:8px;">💳 Pending Payments</div>
+          <div style="font-family:'Inter',sans-serif;font-size:2.2rem;font-weight:800;color:#ef4444;">₹${pending.toLocaleString()}</div>
+          <div style="font-size:12px;color:#9ca3af;margin-top:6px;">Awaiting collection</div>
+          <button class="ac-btn-green" style="margin-top:16px;" onclick="ownerNav('billing',null)">View Billing →</button>
+        </div>
+      </div>
+      <div class="prem-card ac-stagger-6">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+          <h3 style="font-weight:800;font-size:1.1rem;color:#1a1c18;">🔧 Recent Jobs</h3>
+          <button class="ac-btn-green" onclick="openAddJob()">+ New Job</button>
+        </div>
+        <div id="dash-recent"></div>
+      </div>`;
+    loadDashRecent();
+    loadWorkerNotifs();
+  } catch (e) {
+    el.innerHTML = `<div class="alert alert-warn">⚠️ Could not load data. Check MongoDB connection.<br><small style="opacity:.7">${e.message}</small></div>`;
+  }
+}
+
+async function loadDashRecent() {
+  const el = document.getElementById('dash-recent');
+  if (!el) return;
+  try {
+    const { data } = await sb.from('jobs').select('id,title,status,customers(name,vehicle_number),workers(name)').order('created_at', { ascending: false }).limit(8);
+    if (!data || !data.length) { el.innerHTML = '<div class="empty-state" style="padding:24px"><div class="empty-icon">🔧</div><div class="empty-text">No jobs yet</div></div>'; return; }
+    el.innerHTML = `<div class="table-wrap"><table><thead><tr><th>Customer</th><th>Vehicle</th><th>Job</th><th>Worker</th><th>Status</th><th>Action</th></tr></thead><tbody>
+      ${data.map(j => `<tr>
+        <td><strong>${j.customers?.name || '—'}</strong></td>
+        <td class="mono">${j.customers?.vehicle_number || '—'}</td>
+        <td>${j.title}</td>
+        <td>${j.workers?.name || '<span style="color:var(--text3)">Unassigned</span>'}</td>
+        <td>${badge(j.status)}</td>
+        <td><button class="btn btn-sm ${j.status === 'owner_review' ? 'btn-accent' : 'btn-blue'}" data-id="${j.id}" onclick="ownerJobBtn(this)">${j.status === 'owner_review' ? '🔔 Review' : 'Update'}</button></td>
+      </tr>`).join('')}
+    </tbody></table></div>`;
+  } catch (e) {}
+}
+
+async function loadWorkerNotifs() {
+  const el = document.getElementById('dash-worker-notifs');
+  if (!el) return;
+  try {
+    const { data } = await sb.from('jobs').select('id,title,update_notes,customers(name,vehicle_number,phone),workers(name)').eq('status', 'owner_review').order('updated_at', { ascending: false });
+    if (!data || !data.length) {
+      el.innerHTML = '<div style="color:var(--text3);font-size:14px;padding:8px 0;">No pending worker notifications</div>';
+      return;
+    }
+    el.innerHTML = data.map(j => `
+      <div style="display:flex;align-items:center;gap:12px;padding:10px;background:rgba(234,179,8,.08);border:1px solid rgba(234,179,8,.3);border-radius:10px;margin-bottom:8px;">
+        <span style="font-size:20px;flex-shrink:0;">🔔</span>
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:700;font-size:14px;">${j.title}</div>
+          <div style="font-size:12px;color:var(--text2);">${j.workers?.name || '—'} · <span class="mono">${j.customers?.vehicle_number || '—'}</span></div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px;">${(j.update_notes || '').substring(0, 60)}</div>
+        </div>
+        <button class="btn btn-sm btn-accent" data-id="${j.id}" data-phone="${j.customers?.phone || ''}" data-cname="${(j.customers?.name || '').replace(/"/g, '')}" data-title="${j.title.replace(/"/g, '')}" onclick="openUpdateJob(this)">Review</button>
+      </div>`).join('');
+  } catch (e) {}
+}
+
+// Generic button handler for job rows (uses data-id, fetches details)
+async function ownerJobBtn(btn) {
+  const id = btn.dataset.id;
+  try {
+    const { data: j } = await sb.from('jobs').select('id,title,status,customers(name,phone)').eq('id', id).single();
+    openUpdateJobDirect(j.id, j.status, j.customers?.name || '', j.customers?.phone || '', j.title);
+  } catch (e) { toast('Could not load job', 'error'); }
+}
+
+// ──────────────────────────────────────────────────────────────
+// OWNER: CUSTOMERS
+// ──────────────────────────────────────────────────────────────
+async function loadOwnerCustomers() {
+  const el = document.getElementById('owner-content');
+  el.innerHTML = `
+    <div class="section-header" style="margin-bottom:16px;">
+      <div class="search-bar" style="width:300px;"><span>🔍</span><input type="text" placeholder="Search name, vehicle, phone..." oninput="filterCustomers(this.value)"></div>
+      <button class="btn btn-accent" onclick="openAddCustomer()">➕ Add Customer</button>
+    </div>
+    <div id="customers-table">${loading()}</div>`;
+  renderCustomers('');
+}
+
+async function renderCustomers(q) {
+  const el = document.getElementById('customers-table');
+  if (!el) return;
+  try {
+    let qry = sb.from('customers').select('*').order('created_at', { ascending: false });
+    if (q) qry = qry.or('name.ilike.%' + q + '%,vehicle_number.ilike.%' + q + '%,phone.ilike.%' + q + '%');
+    const { data } = await qry;
+    if (!data || !data.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">👥</div><div class="empty-text">No customers found</div></div>'; return; }
+    el.innerHTML = `<div class="card"><div class="table-wrap"><table>
+      <thead><tr><th>Name</th><th>Phone</th><th>Vehicle No</th><th>Model</th><th>Registered</th><th>Action</th></tr></thead>
+      <tbody>${data.map(c => `<tr>
+        <td><strong>${c.name}</strong></td>
+        <td>${c.phone || '—'}</td>
+        <td class="mono" style="color:var(--accent)">${c.vehicle_number}</td>
+        <td>${c.vehicle_model || '—'}</td>
+        <td>${fmtDate(c.created_at)}</td>
+        <td><button class="btn btn-sm btn-blue" data-id="${c.id}" data-name="${c.name.replace(/"/g, '')}" onclick="viewCustHistory(this)">History</button></td>
+      </tr>`).join('')}
+      </tbody></table></div></div>`;
+  } catch (e) { el.innerHTML = '<div class="alert alert-warn">Could not load customers: ' + e.message + '</div>'; }
+}
+
+function filterCustomers(v) { renderCustomers(v); }
+
+async function viewCustHistory(btn) {
+  const id = btn.dataset.id;
+  const name = btn.dataset.name;
+  const el = document.getElementById('owner-content');
+  el.innerHTML = loading();
+  try {
+    const [r1, r2] = await Promise.all([
+      sb.from('customers').select('*').eq('id', id).single(),
+      sb.from('history').select('*').eq('customer_id', id).order('completed_at', { ascending: false })
+    ]);
+    const cust = r1.data;
+    const records = r2.data || [];
+    el.innerHTML = `
+      <button class="btn btn-ghost btn-sm" onclick="loadOwnerCustomers()" style="margin-bottom:16px;">← Back to Customers</button>
+      <div class="vehicle-banner" style="margin-bottom:20px;">
+        <div>
+          <div class="vehicle-no">${cust.vehicle_number}</div>
+          <h2 style="margin-top:8px;">${cust.name}</h2>
+          <p style="color:var(--text2);margin-top:4px;">📞 ${cust.phone || '—'} &nbsp;|&nbsp; 🚗 ${cust.vehicle_model || '—'}</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">📅 Official Service History (${records.length} records)</div>
+        ${!records.length ? '<div class="empty-state" style="padding:24px"><div class="empty-icon">📋</div><div class="empty-text">No service history in records</div></div>' :
+        `<div class="table-wrap"><table>
+          <thead><tr><th>Date</th><th>Service</th><th>Details & Changes Made</th><th>Worker</th><th>Amount</th><th>Status</th></tr></thead>
+          <tbody>${records.map(j => `<tr>
+            <td>${fmtDate(j.completed_at || j.created_at)}</td>
+            <td><strong>${j.job_title}</strong></td>
+            <td><div style="font-size:12px;color:var(--text3);max-width:280px;line-height:1.4;">
+                ${j.description ? `<span><b>Initial Issue:</b> ${j.description}</span><br>` : ''}
+                <span style="color:var(--accent);"><b>Changes Made:</b> ${j.changes_made || '—'}</span>
+            </div></td>
+            <td>${j.worker_name || '—'}</td>
+            <td style="color:var(--accent);font-family:'Space Mono',monospace;">${j.amount ? '₹' + j.amount.toLocaleString() : '—'}</td>
+            <td><span class="badge badge-done">Completed</span></td>
+          </tr>`).join('')}
+          </tbody></table></div>`}
+      </div>`;
+  } catch (e) { toast('Could not load history: ' + e.message, 'error'); loadOwnerCustomers(); }
+}
+
+function openAddCustomer() {
+  document.getElementById('nc-name').value = '';
+  document.getElementById('nc-phone').value = '';
+  document.getElementById('nc-vehicle').value = '';
+  document.getElementById('nc-model').value = '';
+  document.getElementById('nc-creds').style.display = 'none';
+  openModal('modal-add-customer');
+}
+
+async function saveCustomer() {
+  const name = document.getElementById('nc-name').value.trim();
+  const phone = document.getElementById('nc-phone').value.trim();
+  const vehicle = document.getElementById('nc-vehicle').value.trim().toUpperCase();
+  const model = document.getElementById('nc-model').value.trim();
+  if (!name) { toast('Customer name is required', 'error'); return; }
+  if (!vehicle) { toast('Vehicle number is required', 'error'); return; }
+  try {
+    const { error } = await sb.from('customers').insert({ name, phone, vehicle_number: vehicle, vehicle_model: model });
+    if (error) {
+      if (error.code === 11000) toast('Vehicle number already registered', 'error');
+      else toast('Error: ' + error.message, 'error');
+      return;
+    }
+    document.getElementById('nc-creds').style.display = 'block';
+    document.getElementById('nc-cred-display').textContent = vehicle;
+    toast('✅ Customer added! Login: ' + vehicle, 'success');
+    renderCustomers('');
+  } catch (e) { toast('Failed: ' + e.message, 'error'); }
+}
+
+// ──────────────────────────────────────────────────────────────
+// OWNER: JOBS
+// ──────────────────────────────────────────────────────────────
+async function loadOwnerJobs() {
+  const el = document.getElementById('owner-content');
+  el.innerHTML = `
+    <div class="section-header" style="margin-bottom:0;">
+      <div class="page-tabs">
+        <button class="page-tab active" onclick="filterJobs('all',this)">All</button>
+        <button class="page-tab" onclick="filterJobs('pending',this)">Pending</button>
+        <button class="page-tab" onclick="filterJobs('in_progress',this)">In Progress</button>
+        <button class="page-tab" onclick="filterJobs('owner_review',this)">🔔 Review</button>
+        <button class="page-tab" onclick="filterJobs('done',this)">Completed</button>
+      </div>
+      <button class="btn btn-accent" onclick="openAddJob()">+ New Job</button>
+    </div>
+    <div id="jobs-table" style="margin-top:20px;">${loading()}</div>`;
+  renderJobsTable('all');
+}
+
+async function renderJobsTable(filter) {
+  const el = document.getElementById('jobs-table');
+  if (!el) return;
+  try {
+    let qry = sb.from('jobs').select('id,title,status,priority,created_at,customers(name,vehicle_number),workers(name)').order('created_at', { ascending: false });
+    if (filter !== 'all') qry = qry.eq('status', filter);
+    const { data } = await qry;
+    if (!data || !data.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">🔧</div><div class="empty-text">No jobs found</div></div>'; return; }
+    el.innerHTML = `<div class="card"><div class="table-wrap"><table>
+      <thead><tr><th>Customer</th><th>Vehicle</th><th>Job</th><th>Worker</th><th>Priority</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody>${data.map(j => `<tr>
+        <td><strong>${j.customers?.name || '—'}</strong></td>
+        <td class="mono">${j.customers?.vehicle_number || '—'}</td>
+        <td>${j.title}</td>
+        <td>${j.workers?.name || '<span style="color:var(--text3)">Unassigned</span>'}</td>
+        <td><span class="badge ${j.priority === 'urgent' ? 'badge-cancelled' : j.priority === 'low' ? 'badge-done' : 'badge-progress'}">${j.priority || 'normal'}</span></td>
+        <td>${badge(j.status)}</td>
+        <td style="display:flex;gap:6px;">
+          <button class="btn btn-sm ${j.status === 'owner_review' ? 'btn-accent' : 'btn-blue'}" data-id="${j.id}" onclick="ownerJobBtn(this)">${j.status === 'owner_review' ? '🔔' : '✏️'}</button>
+          <button class="btn btn-sm btn-green" data-id="${j.id}" onclick="openBilling(this.dataset.id)">💰</button>
+        </td>
+      </tr>`).join('')}
+      </tbody></table></div></div>`;
+  } catch (e) { el.innerHTML = '<div class="alert alert-warn">Could not load jobs: ' + e.message + '</div>'; }
+}
+
+function filterJobs(status, el) {
+  document.querySelectorAll('#owner-content .page-tab').forEach(t => t.classList.remove('active'));
+  if (el) el.classList.add('active');
+  renderJobsTable(status);
+}
+
+// ──────────────────────────────────────────────────────────────
+// OWNER: ADD JOB
+// ──────────────────────────────────────────────────────────────
+async function openAddJob() {
+  selectedCust = null;
+  document.getElementById('job-cust-search').value = '';
+  document.getElementById('job-cust-id').value = '';
+  document.getElementById('job-cust-results').innerHTML = '';
+  document.getElementById('job-vehicle-info').style.display = 'none';
+  document.getElementById('job-title').value = '';
+  document.getElementById('job-desc').value = '';
+  document.getElementById('job-estimate').value = '';
+  document.getElementById('job-priority').value = 'normal';
+  // load workers into select
+  const sel = document.getElementById('job-worker-select');
+  sel.innerHTML = '<option value="">Select worker...</option>';
+  try {
+    const { data } = await sb.from('workers').select('id,name,specialization').order('name');
+    if (data) data.forEach(w => {
+      const o = document.createElement('option');
+      o.value = w.id;
+      o.textContent = w.name + (w.specialization ? ' — ' + w.specialization : '');
+      sel.appendChild(o);
+    });
+  } catch (e) {}
+  openModal('modal-add-job');
+}
+
+async function searchCust(q) {
+  const el = document.getElementById('job-cust-results');
+  if (!q || q.length < 2) { el.innerHTML = ''; return; }
+  try {
+    const { data } = await sb.from('customers').select('id,name,vehicle_number,vehicle_model').or('name.ilike.%' + encodeURIComponent(q) + '%,vehicle_number.ilike.%' + encodeURIComponent(q) + '%').limit(5);
+    if (!data || !data.length) { el.innerHTML = '<div style="font-size:13px;color:var(--text3);padding:6px;">No customers found</div>'; return; }
+    
+    el.innerHTML = '<div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-top:4px;"></div>';
+    const container = el.firstChild;
+    
+    data.forEach(c => {
+      const row = document.createElement('div');
+      row.style.cssText = 'padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);';
+      row.onmouseover = function(){ this.style.background='var(--bg2)'; };
+      row.onmouseout = function(){ this.style.background=''; };
+      row.onmousedown = function(){ selectCust(c.id, c.name, c.vehicle_number, c.vehicle_model || ''); };
+      row.innerHTML = '<div style="font-weight:600;">' + c.name + '</div><div style="font-size:12px;color:var(--text3);" class="mono">' + c.vehicle_number + (c.vehicle_model ? ' · ' + c.vehicle_model : '') + '</div>';
+      container.appendChild(row);
+    });
+  } catch (e) {}
+}
+
+function selectCust(id, name, vno, model) {
+  selectedCust = { id, name, vno, model };
+  document.getElementById('job-cust-id').value = id;
+  document.getElementById('job-cust-search').value = name + ' — ' + vno;
+  document.getElementById('job-cust-results').innerHTML = '';
+  const info = document.getElementById('job-vehicle-info');
+  info.style.display = 'flex';
+  info.textContent = '🚗 ' + vno + (model ? ' · ' + model : '') + ' | Owner: ' + name;
+}
+
+async function saveJob() {
+  const custId = document.getElementById('job-cust-id').value;
+  const workerId = document.getElementById('job-worker-select').value || null;
+  const title = document.getElementById('job-title').value.trim();
+  const desc = document.getElementById('job-desc').value.trim();
+  const est = parseFloat(document.getElementById('job-estimate').value) || 0;
+  const priority = document.getElementById('job-priority').value;
+  if (!custId) { toast('Please select a customer', 'error'); return; }
+  if (!title) { toast('Job title is required', 'error'); return; }
+  try {
+    const { error } = await sb.from('jobs').insert({ customer_id: custId, worker_id: workerId, title, description: desc, estimated_amount: est, priority, status: 'pending' });
+    if (error) { toast('Error: ' + error.message, 'error'); return; }
+    toast('✅ Job created!', 'success');
+    closeModal('modal-add-job');
+    if (document.getElementById('jobs-table')) renderJobsTable('all');
+    else loadOwnerDashboard();
+  } catch (e) { toast('Failed: ' + e.message, 'error'); }
+}
+
+// ──────────────────────────────────────────────────────────────
+// OWNER: WORKERS
+// ──────────────────────────────────────────────────────────────
+async function loadOwnerWorkers() {
+  const el = document.getElementById('owner-content');
+  el.innerHTML = `
+    <div class="section-header"><h3></h3><button class="btn btn-accent" onclick="openAddWorker()">➕ Add Worker</button></div>
+    <div id="workers-grid">${loading()}</div>`;
+  renderWorkers();
+}
+
+async function renderWorkers() {
+  const el = document.getElementById('workers-grid');
+  if (!el) return;
+  try {
+    const { data } = await sb.from('workers').select('*, jobs(id,status)').order('created_at', { ascending: false });
+    if (!data || !data.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">👷</div><div class="empty-text">No workers added yet</div></div>'; return; }
+    el.innerHTML = '<div class="grid-3">' + data.map(w => {
+      const active = (w.jobs || []).filter(j => j.status === 'in_progress').length;
+      const done = (w.jobs || []).filter(j => j.status === 'done').length;
+      return `<div class="card">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+          <div class="user-avatar" style="width:48px;height:48px;font-size:20px;">${w.name[0].toUpperCase()}</div>
+          <div><div style="font-size:16px;font-weight:700;">${w.name}</div><div style="font-size:13px;color:var(--text3);">${w.specialization || 'General'}</div></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+          <div style="background:var(--bg2);border-radius:8px;padding:10px;text-align:center;"><div style="font-family:'Rajdhani',sans-serif;font-size:1.4rem;font-weight:700;color:var(--yellow)">${active}</div><div style="font-size:11px;color:var(--text3)">Active</div></div>
+          <div style="background:var(--bg2);border-radius:8px;padding:10px;text-align:center;"><div style="font-family:'Rajdhani',sans-serif;font-size:1.4rem;font-weight:700;color:var(--green)">${done}</div><div style="font-size:11px;color:var(--text3)">Done</div></div>
+        </div>
+        <div style="font-size:13px;color:var(--text2);">📞 ${w.phone || '—'}</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:4px;">ID: <span class="mono">${w.worker_id}</span></div>
+      </div>`;
+    }).join('') + '</div>';
+  } catch (e) { el.innerHTML = '<div class="alert alert-warn">Could not load workers: ' + e.message + '</div>'; }
+}
+
+function openAddWorker() {
+  ['nw-name','nw-spec','nw-phone','nw-id','nw-pass'].forEach(id => document.getElementById(id).value = '');
+  openModal('modal-add-worker');
+}
+
+async function saveWorker() {
+  const name = document.getElementById('nw-name').value.trim();
+  const spec = document.getElementById('nw-spec').value.trim();
+  const phone = document.getElementById('nw-phone').value.trim();
+  const wid = document.getElementById('nw-id').value.trim().toUpperCase();
+  const pass = document.getElementById('nw-pass').value.trim();
+  if (!name) { toast('Worker name is required', 'error'); return; }
+  if (!wid) { toast('Worker ID is required', 'error'); return; }
+  if (!pass) { toast('Password is required', 'error'); return; }
+  try {
+    const { error } = await sb.from('workers').insert({ name, specialization: spec, phone, worker_id: wid, password: pass });
+    if (error) {
+      if (error.code === 11000) toast('Worker ID "' + wid + '" already exists', 'error');
+      else toast('Error: ' + error.message, 'error');
+      return;
+    }
+    toast('✅ Worker "' + name + '" added! Login ID: ' + wid, 'success');
+    closeModal('modal-add-worker');
+    renderWorkers();
+  } catch (e) { toast('Failed: ' + e.message, 'error'); }
+}
+
+// ──────────────────────────────────────────────────────────────
+// OWNER: UPDATE JOB (with WhatsApp)
+// ──────────────────────────────────────────────────────────────
+async function openUpdateJobDirect(id, status, custName, custPhone, title, workerId) {
+  document.getElementById('uj-id').value = id;
+  document.getElementById('uj-status').value = status;
+  document.getElementById('uj-phone').value = custPhone || '';
+  document.getElementById('uj-cust-name').value = custName || '';
+  document.getElementById('uj-title').value = title || '';
+  document.getElementById('uj-worker-alert').style.display = status === 'owner_review' ? 'block' : 'none';
+  if (document.getElementById('uj-assign-wrap')) {
+    document.getElementById('uj-assign-wrap').style.display = 'block';
+  }
+  
+  // Populate Workers for Assignment
+  const sel = document.getElementById('uj-worker-select');
+  sel.innerHTML = '<option value="">Unassigned</option>';
+  try {
+    const { data } = await sb.from('workers').select('id,name').order('name');
+    if (data) data.forEach(w => {
+      const o = document.createElement('option');
+      o.value = w.id;
+      o.textContent = w.name;
+      if (w.id === workerId) o.selected = true;
+      sel.appendChild(o);
+    });
+  } catch(e) {}
+
+  // Pre-fill message
+  const msgs = {
+    in_progress: 'Hi ' + custName + ', your vehicle service is currently in progress at AutoCraft Workshop. We will keep you updated.',
+    waiting_parts: 'Hi ' + custName + ', we are waiting for parts. We will notify you once work resumes.',
+    owner_review: 'Hi ' + custName + ', your vehicle service is nearly complete. We are doing a final review.',
+    done: 'Hi ' + custName + ', great news! Your vehicle is ready for pickup at AutoCraft Workshop.',
+    cancelled: 'Hi ' + custName + ', your service job has been cancelled. Please contact us for details.',
+    pending: 'Hi ' + custName + ', your vehicle has been registered for service at AutoCraft Workshop.'
+  };
+  document.getElementById('uj-notes').value = msgs[status] || '';
+  // Enable all options (owner can set any)
+  Array.from(document.getElementById('uj-status').options).forEach(o => o.disabled = false);
+  openModal('modal-update-job');
+}
+
+// Called from data-id buttons in job table
+async function openUpdateJob(btn) {
+  const id = btn.dataset.id;
+  // fetch current status and worker
+  try {
+    const { data: j } = await sb.from('jobs').select('status,worker_id,customers(name,phone),title').eq('id', id).single();
+    if (j) {
+      openUpdateJobDirect(id, j.status, j.customers?.name, j.customers?.phone, j.title, j.worker_id);
+    }
+  } catch (e) {
+    toast('Error fetching job details: ' + e.message, 'error');
+  }
+}
+
+async function submitUpdate() {
+  const id = document.getElementById('uj-id').value;
+  const status = document.getElementById('uj-status').value;
+  const notes = document.getElementById('uj-notes').value.trim();
+  const phone = document.getElementById('uj-phone').value.trim();
+  const title = document.getElementById('uj-title').value;
+  
+  let payload = { status, update_notes: notes, updated_at: new Date().toISOString() };
+  if (document.getElementById('uj-assign-wrap') && document.getElementById('uj-assign-wrap').style.display !== 'none') {
+    payload.worker_id = document.getElementById('uj-worker-select').value || null;
+  }
+
+  try {
+    const { error } = await sb.from('jobs').eq('id', id).update(payload);
+    if (error) { toast('Update failed: ' + error.message, 'error'); return; }
+    closeModal('modal-update-job');
+    toast('✅ Job updated!', 'success');
+    // WhatsApp notification disabled per user request
+
+    // Refresh
+    if (document.getElementById('jobs-table')) renderJobsTable('all');
+    else if (document.getElementById('dash-recent')) { loadDashRecent(); loadWorkerNotifs(); }
+    else if (window.currentWorker && document.getElementById('worker-content')) loadWorkerJobs();
+  } catch (e) { toast('Failed: ' + e.message, 'error'); }
+}
+
+// ──────────────────────────────────────────────────────────────
+// OWNER: BILLING
+// ──────────────────────────────────────────────────────────────
+async function loadOwnerBilling() {
+  const el = document.getElementById('owner-content');
+  el.innerHTML = `
+    <div class="page-tabs">
+      <button class="page-tab active" onclick="filterBills('all',this)">All Bills</button>
+      <button class="page-tab" onclick="filterBills('pending',this)">⏳ Unpaid</button>
+      <button class="page-tab" onclick="filterBills('verifying',this)">🔍 Verifying</button>
+      <button class="page-tab" onclick="filterBills('paid',this)">✅ Paid</button>
+      <button class="page-tab" onclick="filterBills('unbilled',this)">⚠️ Unbilled</button>
+    </div>
+    <div id="billing-table">${loading()}</div>`;
+  renderBills('all');
+}
+
+async function renderBills(filter) {
+  const el = document.getElementById('billing-table');
+  if (!el) return;
+  try {
+    if (filter === 'unbilled') {
+      // Jobs with no bill
+      const { data: jobs } = await sb.from('jobs').select('id,title,status,created_at,customers(name,vehicle_number),workers(name)').not('status', 'in', '("cancelled")').order('created_at', { ascending: false });
+      const { data: bills } = await sb.from('bills').select('job_id');
+      const billedIds = new Set((bills || []).map(b => b.job_id));
+      const unbilled = (jobs || []).filter(j => !billedIds.has(j.id));
+      if (!unbilled.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">✅</div><div class="empty-text">All jobs are billed</div></div>'; return; }
+      el.innerHTML = `<div class="card"><div class="table-wrap"><table>
+        <thead><tr><th>Date</th><th>Customer</th><th>Vehicle</th><th>Job</th><th>Status</th><th>Action</th></tr></thead>
+        <tbody>${unbilled.map(j => `<tr>
+          <td>${fmtDate(j.created_at)}</td>
+          <td>${j.customers?.name || '—'}</td>
+          <td class="mono">${j.customers?.vehicle_number || '—'}</td>
+          <td>${j.title}</td>
+          <td>${badge(j.status)}</td>
+          <td><button class="btn btn-sm btn-accent" onclick="openBilling('${j.id}')">💰 Invoice</button></td>
+        </tr>`).join('')}
+        </tbody></table></div></div>`;
+      return;
+    }
+    let qry = sb.from('bills').select('*, jobs(id,title,status,customers(name,vehicle_number),workers(name))').order('created_at', { ascending: false });
+    if (filter !== 'all') qry = qry.eq('payment_status', filter);
+    const { data } = await qry;
+    if (!data || !data.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">💰</div><div class="empty-text">No bills found</div></div>'; return; }
+    el.innerHTML = `<div class="card"><div class="table-wrap"><table>
+      <thead><tr><th>Date</th><th>Customer</th><th>Job</th><th>Total</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody>${data.map(b => `<tr>
+        <td>${fmtDate(b.created_at)}</td>
+        <td>${b.jobs?.customers?.name || '—'}<br><span class="mono" style="font-size:11px;color:var(--text3)">${b.jobs?.customers?.vehicle_number || ''}</span></td>
+        <td>${b.jobs?.title || '—'}</td>
+        <td style="font-family:'Space Mono',monospace;color:var(--accent);font-weight:700;">₹${(b.total_amount || 0).toLocaleString()}</td>
+        <td>${badge(b.payment_status === 'paid' ? 'done' : b.payment_status === 'verifying' ? 'waiting' : 'pending')}</td>
+        <td style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button class="btn btn-sm btn-blue" onclick="openBilling('${b.job_id}')">✏️</button>
+          ${b.payment_status === 'verifying' ? `<button class="btn btn-sm btn-green" onclick="markPaid('${b.id}','${b.job_id}')">✅ Confirm Payment</button>` : b.payment_status === 'pending' ? `<button class="btn btn-sm btn-accent" onclick="openBillingQR('${b.job_id}')">📱 QR</button><button class="btn btn-sm btn-green" onclick="markPaid('${b.id}','${b.job_id}')">✅ Mark Paid</button>` : ''}
+        </td>
+      </tr>`).join('')}
+      </tbody></table></div></div>`;
+  } catch (e) { el.innerHTML = '<div class="alert alert-warn">Could not load bills: ' + e.message + '</div>'; }
+}
+
+function filterBills(f, el) {
+  document.querySelectorAll('#owner-content .page-tab').forEach(t => t.classList.remove('active'));
+  if (el) el.classList.add('active');
+  renderBills(f);
+}
+
+async function openBilling(jobId) {
+  document.getElementById('bill-job-id').value = jobId;
+  document.getElementById('bill-labour').value = '';
+  document.getElementById('bill-parts').value = '';
+  document.getElementById('bill-other').value = '';
+  document.getElementById('bill-discount').value = '';
+  document.getElementById('bill-notes').value = '';
+  document.getElementById('bill-upi-toggle').checked = false;
+  document.getElementById('bill-upi-section').style.display = 'none';
+  document.getElementById('bill-qr-wrap').innerHTML = '';
+  document.getElementById('bill-upi-display').textContent = '';
+  if (billQRInstance) { try { billQRInstance.clear(); } catch(e) {} billQRInstance = null; }
+  // Pre-load saved UPI
+  const savedUPI = localStorage.getItem('ac-upi') || '';
+  document.getElementById('bill-upi-id').value = savedUPI;
+  calcBill();
+  // Load existing bill if any
+  try {
+    const { data: existing } = await sb.from('bills').select('*').eq('job_id', jobId).single();
+    if (existing) {
+      document.getElementById('bill-labour').value = existing.labour_charges || '';
+      document.getElementById('bill-parts').value = existing.parts_cost || '';
+      document.getElementById('bill-other').value = existing.other_charges || '';
+      document.getElementById('bill-discount').value = existing.discount || '';
+      document.getElementById('bill-notes').value = existing.notes || '';
+      document.getElementById('bill-pay-status').value = existing.payment_status || 'pending';
+      if (existing.upi_id) document.getElementById('bill-upi-id').value = existing.upi_id;
+      calcBill();
+    }
+  } catch (e) {}
+  // Load job info
+  try {
+    const { data: j } = await sb.from('jobs').select('title,customers(name,vehicle_number)').eq('id', jobId).single();
+    document.getElementById('bill-job-info').textContent = '🔧 ' + (j?.title || '') + ' | ' + (j?.customers?.name || '') + ' — ' + (j?.customers?.vehicle_number || '');
+  } catch (e) {}
+  openModal('modal-billing');
+}
+
+async function openBillingQR(jobId) {
+  await openBilling(jobId);
+  document.getElementById('bill-upi-toggle').checked = true;
+  toggleUPI(true);
+}
+
+function calcBill() {
+  const l = parseFloat(document.getElementById('bill-labour').value) || 0;
+  const p = parseFloat(document.getElementById('bill-parts').value) || 0;
+  const o = parseFloat(document.getElementById('bill-other').value) || 0;
+  const d = parseFloat(document.getElementById('bill-discount').value) || 0;
+  const sub = l + p + o;
+  const total = Math.max(0, sub - d);
+  document.getElementById('bill-subtotal').textContent = '₹' + sub.toLocaleString();
+  document.getElementById('bill-disc-display').textContent = '- ₹' + d.toLocaleString();
+  document.getElementById('bill-total').textContent = '₹' + total.toLocaleString();
+  updateQR();
+}
+
+function toggleUPI(show) {
+  document.getElementById('bill-upi-section').style.display = show ? 'block' : 'none';
+  if (show) updateQR();
+}
+
+function updateQR() {
+  if (!document.getElementById('bill-upi-toggle').checked) return;
+  const upi = document.getElementById('bill-upi-id').value.trim();
+  const total = parseFloat(document.getElementById('bill-total').textContent.replace(/[^0-9.]/g, '')) || 0;
+  const wrap = document.getElementById('bill-qr-wrap');
+  if (!upi || total <= 0) { wrap.innerHTML = '<p style="font-size:12px;color:#888;padding:16px;">Enter UPI ID and amount</p>'; document.getElementById('bill-upi-display').textContent = ''; return; }
+  localStorage.setItem('ac-upi', upi);
+  wrap.innerHTML = '';
+  const div = document.createElement('div');
+  wrap.appendChild(div);
+  const upiLink = 'upi://pay?pa=' + encodeURIComponent(upi) + '&pn=AutoCraft+Workshop&am=' + total.toFixed(2) + '&cu=INR';
+  try {
+    if (billQRInstance) { try { billQRInstance.clear(); } catch(e) {} }
+    billQRInstance = new QRCode(div, { text: upiLink, width: 140, height: 140, colorDark: '#000', colorLight: '#fff', correctLevel: QRCode.CorrectLevel.M });
+  } catch (e) { wrap.innerHTML = '<p style="color:#888;font-size:12px;padding:16px;">QR unavailable</p>'; }
+  document.getElementById('bill-upi-display').textContent = 'Pay to: ' + upi;
+}
+
+async function confirmUPIPaid() {
+  const jobId = document.getElementById('bill-job-id').value;
+  const l = parseFloat(document.getElementById('bill-labour').value) || 0;
+  const p = parseFloat(document.getElementById('bill-parts').value) || 0;
+  const o = parseFloat(document.getElementById('bill-other').value) || 0;
+  const d = parseFloat(document.getElementById('bill-discount').value) || 0;
+  const total = Math.max(0, l + p + o - d);
+  const upi = document.getElementById('bill-upi-id').value.trim();
+  const notes = document.getElementById('bill-notes').value.trim();
+  try {
+    await sb.from('bills').upsert({ job_id: jobId, labour_charges: l, parts_cost: p, other_charges: o, discount: d, total_amount: total, payment_status: 'paid', upi_id: upi, notes: notes ? notes + ' | Paid via UPI' : 'Paid via UPI' }, { onConflict: 'job_id' });
+    await sb.from('jobs').eq('id', jobId).update({ status: 'done', updated_at: new Date().toISOString() });
+    finalizeJobHistory(jobId);
+    closeModal('modal-billing');
+    openModal('modal-pay-success');
+  } catch (e) { toast('Failed: ' + e.message, 'error'); }
+}
+
+async function saveBilling() {
+  const jobId = document.getElementById('bill-job-id').value;
+  const l = parseFloat(document.getElementById('bill-labour').value) || 0;
+  const p = parseFloat(document.getElementById('bill-parts').value) || 0;
+  const o = parseFloat(document.getElementById('bill-other').value) || 0;
+  const d = parseFloat(document.getElementById('bill-discount').value) || 0;
+  const total = Math.max(0, l + p + o - d);
+  const payStatus = document.getElementById('bill-pay-status').value;
+  const upi = document.getElementById('bill-upi-id').value.trim();
+  const notes = document.getElementById('bill-notes').value.trim();
+  try {
+    const { error } = await sb.from('bills').upsert({ job_id: jobId, labour_charges: l, parts_cost: p, other_charges: o, discount: d, total_amount: total, payment_status: payStatus, upi_id: upi, notes }, { onConflict: 'job_id' });
+    if (error) { toast('Error: ' + error.message, 'error'); return; }
+    if (payStatus === 'paid') {
+      await sb.from('jobs').eq('id', jobId).update({ status: 'done', updated_at: new Date().toISOString() });
+      finalizeJobHistory(jobId);
+    }
+    toast('✅ Invoice saved!', 'success');
+    closeModal('modal-billing');
+    renderBills('all');
+  } catch (e) { toast('Failed: ' + e.message, 'error'); }
+}
+
+async function markPaid(billId, jobId) {
+  try {
+    await sb.from('bills').eq('id', billId).update({ payment_status: 'paid' });
+    await sb.from('jobs').eq('id', jobId).update({ status: 'done', updated_at: new Date().toISOString() });
+    finalizeJobHistory(jobId);
+    toast('✅ Marked as paid & Moved to History!', 'success');
+    renderBills('all');
+  } catch (e) { toast('Failed: ' + e.message, 'error'); }
+}
+
+async function finalizeJobHistory(jobId) {
+  try {
+    const { data: existing } = await sb.from('history').select('id').eq('job_id', jobId).single();
+    if (existing) return;
+    const { data: job } = await sb.from('jobs').select('*, customers(name,vehicle_number,vehicle_model,phone), workers(name), bills(total_amount)').eq('id', jobId).single();
+    if (!job) return;
+    await sb.from('history').insert({
+      customer_id: job.customer_id,
+      customer_name: job.customers?.name || 'Unknown',
+      vehicle_number: job.customers?.vehicle_number || '',
+      vehicle_model: job.customers?.vehicle_model || '',
+      job_id: job.id,
+      job_title: job.title,
+      description: job.description || '',
+      changes_made: job.update_notes || 'Standard service completed',
+      worker_name: job.workers?.name || 'Unknown',
+      amount: job.bills?.[0]?.total_amount || 0,
+      completed_at: new Date().toISOString()
+    });
+  } catch (e) { console.error('History save failed', e); }
+}
+
+// ──────────────────────────────────────────────────────────────
+// WORKER NAVIGATION
+// ──────────────────────────────────────────────────────────────
+function workerNav(section, el) {
+  document.querySelectorAll('#worker-page .nav-item').forEach(n => n.classList.remove('active'));
+  if (el) el.classList.add('active');
+  document.getElementById('worker-title').textContent = section === 'jobs' ? 'My Jobs' : 'History';
+  if (section === 'jobs') loadWorkerJobs();
+  else loadWorkerHistory();
+}
+
+// ──────────────────────────────────────────────────────────────
+// WORKER: JOBS
+// ──────────────────────────────────────────────────────────────
+async function loadWorkerJobs() {
+  const el = document.getElementById('worker-content');
+  el.innerHTML = loading();
+  try {
+    const { data } = await sb.from('jobs').select('*, customers(name,vehicle_number,vehicle_model),bills(total_amount)').eq('worker_id', currentWorker.id).in('status', ['pending','in_progress','waiting_parts','owner_review']).order('created_at', { ascending: false });
+    const jobs = data || [];
+    const active = jobs.filter(j => j.status === 'in_progress').length;
+    el.innerHTML = `
+      <div class="stats-grid" style="margin-bottom:24px;">
+        <div class="stat-card" style="--accent-color:var(--yellow)"><div class="stat-icon">📋</div><div class="stat-value">${jobs.length}</div><div class="stat-label">Assigned</div></div>
+        <div class="stat-card" style="--accent-color:var(--blue)"><div class="stat-icon">⚙️</div><div class="stat-value">${active}</div><div class="stat-label">In Progress</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">🔧 My Active Jobs</div>
+        ${!jobs.length ? '<div class="empty-state"><div class="empty-icon">✅</div><div class="empty-text">No active jobs</div><div class="empty-sub">Check back later</div></div>' :
+        '<div style="display:flex;flex-direction:column;gap:14px;">' + jobs.map(j => `
+          <div class="card" style="background:var(--bg2);border:1px solid var(--border2);">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+              <div>
+                <div style="font-size:17px;font-weight:700;">${j.title}</div>
+                <div style="font-size:13px;color:var(--text2);margin-top:4px;">
+                  🚗 <span class="mono" style="color:var(--accent)">${j.customers?.vehicle_number}</span> — ${j.customers?.name} · ${j.customers?.vehicle_model || ''}
+                </div>
+                ${j.description ? '<div style="font-size:13px;color:var(--text2);margin-top:8px;">' + j.description + '</div>' : ''}
+                ${j.update_notes ? '<div class="alert alert-info" style="margin-top:8px;font-size:12px;">📝 ' + j.update_notes + '</div>' : ''}
+              </div>
+              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+                ${badge(j.status)}
+                <span class="badge ${j.priority === 'urgent' ? 'badge-cancelled' : 'badge-progress'}">${j.priority || 'normal'}</span>
+              </div>
+            </div>
+            <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;">
+              ${j.status === 'owner_review'
+                ? '<span class="badge badge-waiting" style="padding:7px 14px;">🕐 Awaiting Owner Review</span>'
+                : `<button class="btn btn-sm btn-blue" onclick="openWorkerUpdate('${j.id}','${j.status}')">📝 Update Status</button>
+                   <button class="btn btn-sm btn-green" onclick="openWorkerDone('${j.id}')">✅ Mark as Done</button>`}
+              <button class="btn btn-sm btn-ghost" onclick="viewWorkerCarHistory('${j.customer_id}')">📖 Car History</button>
+            </div>
+          </div>`).join('') + '</div>'}
+      </div>`;
+  } catch (e) { el.innerHTML = '<div class="alert alert-warn">Could not load jobs: ' + e.message + '</div>'; }
+}
+
+async function viewWorkerCarHistory(custId) {
+  const el = document.getElementById('worker-content');
+  el.innerHTML = loading();
+  try {
+    const [r1, r2] = await Promise.all([
+      sb.from('customers').select('*').eq('id', custId).single(),
+      sb.from('history').select('*').eq('customer_id', custId).order('completed_at', { ascending: false })
+    ]);
+    const cust = r1.data;
+    const records = r2.data || [];
+    el.innerHTML = `
+      <button class="btn btn-ghost btn-sm" onclick="loadWorkerJobs()" style="margin-bottom:16px;">← Back to Jobs</button>
+      <div class="vehicle-banner" style="margin-bottom:20px;">
+        <div>
+          <div class="vehicle-no">${cust.vehicle_number}</div>
+          <h2 style="margin-top:8px;">${cust.name}</h2>
+          <p style="color:var(--text2);margin-top:4px;">🚗 ${cust.vehicle_model || '—'}</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">📅 Official Car Service History</div>
+        ${!records.length ? '<div class="empty-state" style="padding:24px"><div class="empty-icon">📋</div><div class="empty-text">No prior completed service history</div></div>' :
+        `<div class="table-wrap"><table>
+          <thead><tr><th>Date</th><th>Service & Changes Made</th><th>Worker</th><th>Status</th></tr></thead>
+          <tbody>${records.map(j => `<tr>
+            <td>${fmtDate(j.completed_at || j.created_at)}</td>
+            <td>
+              <strong>${j.job_title}</strong>
+              <div style="font-size:12px;color:var(--text3);max-width:280px;margin-top:6px;line-height:1.4;">
+                ${j.description ? `<span><b>Initial Issue:</b> ${j.description}</span><br>` : ''}
+                <span style="color:var(--accent);"><b>Changes Made:</b> ${j.changes_made || '—'}</span>
+              </div>
+            </td>
+            <td>${j.worker_name || '—'}</td>
+            <td><span class="badge badge-done">Completed</span></td>
+          </tr>`).join('')}
+          </tbody></table></div>`}
+      </div>`;
+  } catch (e) { toast('Could not load history: ' + e.message, 'error'); loadWorkerJobs(); }
+}
+
+function openWorkerUpdate(id, status) {
+  // Reuse owner update modal but restrict options & hide WhatsApp
+  document.getElementById('uj-id').value = id;
+  document.getElementById('uj-status').value = status;
+  document.getElementById('uj-phone').value = '';
+  document.getElementById('uj-cust-name').value = '';
+  document.getElementById('uj-title').value = '';
+  document.getElementById('uj-notes').value = '';
+  document.getElementById('uj-worker-alert').style.display = 'none';
+  if (document.getElementById('uj-assign-wrap')) {
+    document.getElementById('uj-assign-wrap').style.display = 'none';
+  }
+  // Restrict worker: can only set in_progress or waiting_parts
+  Array.from(document.getElementById('uj-status').options).forEach(o => {
+    o.disabled = (o.value === 'done' || o.value === 'owner_review' || o.value === 'cancelled');
+  });
+  openModal('modal-update-job');
+}
+
+function openWorkerDone(id) {
+  document.getElementById('wd-id').value = id;
+  document.getElementById('wd-notes').value = '';
+  openModal('modal-worker-done');
+}
+
+async function submitWorkerDone() {
+  const id = document.getElementById('wd-id').value;
+  const notes = document.getElementById('wd-notes').value.trim();
+  if (!notes) { toast('Please describe what was completed', 'error'); return; }
+  try {
+    const { error } = await sb.from('jobs').eq('id', id).update({ status: 'owner_review', update_notes: 'Worker: ' + notes, updated_at: new Date().toISOString() });
+    if (error) { toast('Error: ' + error.message, 'error'); return; }
+    toast('✅ Owner notified!', 'success');
+    closeModal('modal-worker-done');
+    loadWorkerJobs();
+  } catch (e) { toast('Failed: ' + e.message, 'error'); }
+}
+
+async function loadWorkerHistory() {
+  const el = document.getElementById('worker-content');
+  el.innerHTML = loading();
+  try {
+    const { data } = await sb.from('jobs').select('*, customers(name,vehicle_number), bills(total_amount,payment_status)').eq('worker_id', currentWorker.id).in('status', ['done','cancelled']).order('updated_at', { ascending: false });
+    const jobs = data || [];
+    el.innerHTML = `<div class="card">
+      <div class="card-title">📅 Completed Jobs</div>
+      ${!jobs.length ? '<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">No completed jobs yet</div></div>' :
+      '<div class="table-wrap"><table><thead><tr><th>Date</th><th>Job</th><th>Customer</th><th>Status</th><th>Amount</th></tr></thead><tbody>' +
+      jobs.map(j => `<tr>
+        <td>${fmtDate(j.updated_at || j.created_at)}</td>
+        <td><strong>${j.title}</strong></td>
+        <td>${j.customers?.name || '—'}<br><span class="mono" style="font-size:11px;color:var(--text3)">${j.customers?.vehicle_number || ''}</span></td>
+        <td>${badge(j.status)}</td>
+        <td style="color:var(--accent);font-family:'Space Mono',monospace;">${j.bills?.[0]?.total_amount ? '₹' + j.bills[0].total_amount.toLocaleString() : '—'}</td>
+      </tr>`).join('') + '</tbody></table></div>'}
+    </div>`;
+  } catch (e) { el.innerHTML = '<div class="alert alert-warn">Could not load history: ' + e.message + '</div>'; }
+}
+
+// ──────────────────────────────────────────────────────────────
+// CUSTOMER NAVIGATION
+// ──────────────────────────────────────────────────────────────
+function custNav(section, el) {
+  document.querySelectorAll('#customer-page .nav-item').forEach(n => n.classList.remove('active'));
+  if (el) el.classList.add('active');
+  document.getElementById('cust-title').textContent = { status: 'Vehicle Status', history: 'Service History', review: 'Review' }[section] || section;
+  if (section === 'status') loadCustStatus();
+  else if (section === 'history') loadCustHistory();
+  else loadCustReview();
+}
+
+// ──────────────────────────────────────────────────────────────
+// CUSTOMER: STATUS
+// ──────────────────────────────────────────────────────────────
+async function loadCustStatus() {
+  const el = document.getElementById('cust-content');
+  el.innerHTML = loading();
+  try {
+    const { data: jobs } = await sb.from('jobs').select('*, workers(name), bills(total_amount,payment_status,upi_id)').eq('customer_id', currentCustomer.id).order('created_at', { ascending: false }).limit(6);
+    const latest = (jobs || [])[0];
+    const bill = latest?.bills?.[0];
+    const needsPay = bill?.total_amount && bill?.payment_status === 'pending' && bill?.upi_id;
+    const verifying = bill?.payment_status === 'verifying';
+    el.innerHTML = `
+      <div class="vehicle-banner">
+        <div>
+          <div class="vehicle-no">${currentCustomer.vehicle_number}</div>
+          <h2 style="margin-top:8px;font-size:1.5rem;">${currentCustomer.name}</h2>
+          <p style="color:var(--text2);margin-top:4px;">🚗 ${currentCustomer.vehicle_model || 'Your Vehicle'} &nbsp;|&nbsp; 📞 ${currentCustomer.phone || '—'}</p>
+        </div>
+      </div>
+      ${latest ? `
+      <div class="card" style="margin-bottom:20px;border-color:${latest.status === 'done' && bill?.payment_status === 'paid' ? 'var(--green)' : 'var(--accent)'};box-shadow:0 0 24px var(--glow);">
+        <div class="card-title">🔧 Current Service</div>
+        <div style="font-size:1.15rem;font-weight:700;margin-bottom:10px;">${latest.title}</div>
+        <div style="margin-bottom:14px;">${badge(latest.status)}</div>
+        ${latest.description ? '<p style="color:var(--text2);font-size:14px;margin-bottom:14px;background:var(--bg2);padding:10px;border-radius:8px;">' + latest.description + '</p>' : ''}
+        ${latest.update_notes ? '<div class="alert alert-info" style="margin-bottom:16px;">📢 <strong>Workshop:</strong> ' + latest.update_notes + '</div>' : ''}
+        <div style="margin-bottom:6px;font-size:13px;color:var(--text2);">Progress</div>
+        <div class="progress-wrap"><div class="progress-bar" style="width:${progress(latest.status)}%"></div></div>
+        <div style="font-size:12px;color:var(--text3);margin-top:5px;">${progress(latest.status)}% complete</div>
+        <div class="divider"></div>
+        <div style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:${needsPay || verifying ? '16px' : '0'};">
+          <div><div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;">Mechanic</div><div style="font-weight:600;margin-top:4px;">${latest.workers?.name || 'Being assigned'}</div></div>
+          <div><div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;">Amount</div>
+            ${bill?.total_amount ? `<div style="font-weight:700;margin-top:4px;color:var(--accent);font-family:'Space Mono',monospace;font-size:1.3rem;">₹${bill.total_amount.toLocaleString()}</div><span class="badge ${bill.payment_status === 'paid' ? 'badge-done' : bill.payment_status === 'verifying' ? 'badge-waiting' : 'badge-pending'}">${bill.payment_status === 'paid' ? '✅ Paid' : bill.payment_status === 'verifying' ? '🔍 Verifying' : '⏳ Pending'}</span>` : '<div style="color:var(--text3);margin-top:4px;font-weight:600;">Will be set by workshop</div>'}
+          </div>
+        </div>
+        ${verifying ? `<div class="alert alert-info" style="box-shadow:inset 0 1px 3px rgba(0,0,0,0.2);">⏳ Payment sent. Verification pending with admin.</div>` : needsPay ? `
+        <div style="background:linear-gradient(135deg,rgba(37,211,102,.1),rgba(34,197,94,.05));border:2px solid rgba(37,211,102,.4);border-radius:14px;padding:18px;text-align:center;">
+          <div style="font-size:22px;margin-bottom:6px;">💳</div>
+          <div style="font-weight:700;font-size:16px;margin-bottom:4px;">Payment Due</div>
+          <div style="font-family:'Space Mono',monospace;font-size:2rem;color:var(--accent);font-weight:700;margin-bottom:14px;">₹${bill.total_amount.toLocaleString()}</div>
+          <button class="btn btn-green" style="padding:13px 36px;font-size:16px;font-weight:700;width:100%;max-width:260px;" onclick="openCustPay('${latest.id}','${bill.total_amount}','${bill.upi_id || ''}','${latest.title.replace(/'/g, '').replace(/"/g, '')}')">📱 Scan QR &amp; Pay Now</button>
+        </div>` : bill?.payment_status === 'paid' ? '<div class="alert alert-success">✅ Payment received. Thank you!</div>' : ''}
+      </div>` : '<div class="alert alert-success" style="margin-bottom:20px;">✅ No active service at the moment</div>'}
+      ${jobs && jobs.length > 1 ? `
+      <div class="card">
+        <div class="card-title">📅 Recent Services</div>
+        <div class="timeline">${jobs.slice(0, 5).map(j => `
+          <div class="timeline-item">
+            <div class="timeline-dot ${j.status === 'done' ? 'filled' : ''}"></div>
+            <div class="timeline-content">
+              <div class="timeline-title">${j.title}</div>
+              <div class="timeline-time">${fmtDate(j.created_at)} · ${j.workers?.name || '—'}</div>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:5px;">${badge(j.status)}${j.bills?.[0]?.total_amount ? '<span style="font-size:12px;color:var(--accent);font-family:\'Space Mono\',monospace;font-weight:700;">₹' + j.bills[0].total_amount.toLocaleString() + '</span>' : ''}</div>
+            </div>
+          </div>`).join('')}
+        </div>
+      </div>` : ''}`;
+  } catch (e) { el.innerHTML = '<div class="alert alert-warn">Could not load status: ' + e.message + '</div>'; }
+}
+
+function openCustPay(jobId, amount, upiId, title) {
+  if (!upiId) { toast('Payment QR not configured by workshop yet', 'info'); return; }
+  const wrap = document.getElementById('cp-qr-wrap');
+  wrap.innerHTML = '';
+  const div = document.createElement('div');
+  wrap.appendChild(div);
+  const upiLink = 'upi://pay?pa=' + encodeURIComponent(upiId) + '&pn=AutoCraft+Workshop&am=' + parseFloat(amount).toFixed(2) + '&cu=INR&tn=AutoCraft-' + encodeURIComponent(title);
+  try {
+    if (custQRInstance) { try { custQRInstance.clear(); } catch(e) {} }
+    custQRInstance = new QRCode(div, { text: upiLink, width: 160, height: 160, colorDark: '#000', colorLight: '#fff', correctLevel: QRCode.CorrectLevel.M });
+  } catch (e) { wrap.innerHTML = '<p style="color:#888;font-size:12px;padding:20px;">QR unavailable</p>'; }
+  document.getElementById('cp-amount').textContent = '₹' + parseFloat(amount).toLocaleString();
+  document.getElementById('cp-upi').textContent = 'Pay to: ' + upiId;
+  document.getElementById('modal-cust-pay').dataset.jobId = jobId;
+  openModal('modal-cust-pay');
+}
+
+async function confirmCustPayment() {
+  const jobId = document.getElementById('modal-cust-pay').dataset.jobId;
+  try {
+    const { error } = await sb.from('bills').eq('job_id', jobId).update({ payment_status: 'verifying' });
+    if (error) throw error;
+    await sb.from('jobs').eq('id', jobId).update({ update_notes: 'Customer marked payment as done. Please verify and close.', updated_at: new Date().toISOString() });
+    closeModal('modal-cust-pay');
+    toast('⏳ Payment verification sent to Admin.', 'success');
+    loadCustStatus();
+  } catch (e) { toast('Could not confirm payment: ' + e.message, 'error'); }
+}
+
+// ──────────────────────────────────────────────────────────────
+// CUSTOMER: HISTORY
+// ──────────────────────────────────────────────────────────────
+async function loadCustHistory() {
+  const el = document.getElementById('cust-content');
+  el.innerHTML = loading();
+  try {
+    const { data } = await sb.from('jobs').select('*, workers(name), bills(total_amount,payment_status)').eq('customer_id', currentCustomer.id).order('created_at', { ascending: false });
+    const jobs = data || [];
+    el.innerHTML = `<div class="card">
+      <div class="card-title">📅 Full Service History</div>
+      ${!jobs.length ? '<div class="empty-state"><div class="empty-icon">🚗</div><div class="empty-text">No service history yet</div></div>' :
+      '<div class="table-wrap"><table><thead><tr><th>Date</th><th>Service</th><th>Mechanic</th><th>Status</th><th>Amount</th><th>Payment</th></tr></thead><tbody>' +
+      jobs.map(j => `<tr>
+        <td>${fmtDate(j.created_at)}</td>
+        <td><strong>${j.title}</strong>${j.description ? '<div style="font-size:12px;color:var(--text3)">' + j.description.substring(0, 50) + '</div>' : ''}</td>
+        <td>${j.workers?.name || '—'}</td>
+        <td>${badge(j.status)}</td>
+        <td style="color:var(--accent);font-family:'Space Mono',monospace;font-weight:700;">${j.bills?.[0]?.total_amount ? '₹' + j.bills[0].total_amount.toLocaleString() : '—'}</td>
+        <td>${j.bills?.[0]?.payment_status ? '<span class="badge ' + (j.bills[0].payment_status === 'paid' ? 'badge-done' : 'badge-pending') + '">' + (j.bills[0].payment_status === 'paid' ? '✅ Paid' : '⏳ Pending') + '</span>' : '—'}</td>
+      </tr>`).join('') + '</tbody></table></div>'}
+    </div>`;
+  } catch (e) { el.innerHTML = '<div class="alert alert-warn">Could not load history: ' + e.message + '</div>'; }
+}
+
+// ──────────────────────────────────────────────────────────────
+// CUSTOMER: REVIEW
+// ──────────────────────────────────────────────────────────────
+async function loadCustReview() {
+  const el = document.getElementById('cust-content');
+  el.innerHTML = loading();
+  try {
+    const [r1, r2] = await Promise.all([
+      sb.from('jobs').select('id,title').eq('customer_id', currentCustomer.id).eq('status', 'done'),
+      sb.from('reviews').select('*, jobs(title)').eq('customer_id', currentCustomer.id).order('created_at', { ascending: false })
+    ]);
+    const jobs = r1.data || [];
+    const reviews = r2.data || [];
+    reviewStars = 0;
+    el.innerHTML = `<div class="grid-2">
+      <div class="card">
+        <div class="card-title">⭐ Leave a Review</div>
+        <div class="form-group">
+          <label>Service</label>
+          <select id="rv-job"><option value="">Select a completed service...</option>${jobs.map(j => '<option value="' + j.id + '">' + j.title + '</option>').join('')}</select>
+        </div>
+        <div class="form-group">
+          <label>Rating</label>
+          <div class="stars">${[1,2,3,4,5].map(i => '<span class="star" onclick="setStars(' + i + ')" data-v="' + i + '">★</span>').join('')}</div>
+        </div>
+        <div class="form-group"><label>Feedback</label><textarea id="rv-text" placeholder="Tell us about your experience..."></textarea></div>
+        <button class="btn btn-accent" style="width:100%;" onclick="submitReview()">Submit Review</button>
+      </div>
+      <div class="card">
+        <div class="card-title">📋 Your Reviews</div>
+        ${!reviews.length ? '<div class="empty-state" style="padding:24px"><div class="empty-icon">💬</div><div class="empty-text">No reviews yet</div></div>' :
+        '<div style="display:flex;flex-direction:column;gap:14px;">' + reviews.map(r => `
+          <div style="background:var(--bg2);border-radius:10px;padding:14px;border:1px solid var(--border);">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <strong>${r.jobs?.title || 'General'}</strong>
+              <div>${'★'.repeat(r.rating)}<span style="color:var(--border2)">${'★'.repeat(5 - r.rating)}</span></div>
+            </div>
+            <p style="font-size:14px;color:var(--text2);">${r.feedback || '—'}</p>
+            <p style="font-size:11px;color:var(--text3);margin-top:6px;">${fmtDate(r.created_at)}</p>
+          </div>`).join('') + '</div>'}
+      </div>
+    </div>`;
+  } catch (e) { el.innerHTML = '<div class="alert alert-warn">Could not load reviews: ' + e.message + '</div>'; }
+}
+
+function setStars(v) {
+  reviewStars = v;
+  document.querySelectorAll('.star').forEach(s => s.classList.toggle('active', parseInt(s.dataset.v) <= v));
+}
+
+async function submitReview() {
+  const jobId = document.getElementById('rv-job')?.value || null;
+  const feedback = document.getElementById('rv-text')?.value?.trim() || '';
+  if (!reviewStars) { toast('Please select a rating', 'error'); return; }
+  try {
+    const { error } = await sb.from('reviews').insert({ customer_id: currentCustomer.id, job_id: jobId || null, rating: reviewStars, feedback });
+    if (error) { toast('Error: ' + error.message, 'error'); return; }
+    toast('Thank you for your review! ⭐', 'success');
+    loadCustReview();
+  } catch (e) { toast('Failed: ' + e.message, 'error'); }
+}
+
+// ──────────────────────────────────────────────────────────────
+// POLLING (customer auto-refresh every 30s)
+// ──────────────────────────────────────────────────────────────
+function startPoll() {
+  stopPoll();
+  pollTimer = setInterval(() => {
+    if (currentUser?.role === 'customer') loadCustStatus();
+  }, 30000);
+}
+function stopPoll() {
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+}
+
+// ──────────────────────────────────────────────────────────────
+// HELPERS
+// ──────────────────────────────────────────────────────────────
+function badge(status) {
+  const map = {
+    pending: ['badge-pending', '⏳ Pending'],
+    in_progress: ['badge-progress', '⚙️ In Progress'],
+    done: ['badge-done', '✅ Completed'],
+    waiting_parts: ['badge-waiting', '📦 Waiting Parts'],
+    owner_review: ['badge-waiting', '🔔 Worker Done'],
+    cancelled: ['badge-cancelled', '❌ Cancelled'],
+    paid: ['badge-done', '✅ Paid'],
+    partial: ['badge-waiting', '🕐 Partial'],
+  };
+  const [cls, label] = map[status] || ['badge-pending', status];
+  return '<span class="badge ' + cls + '">' + label + '</span>';
+}
+
+function progress(status) {
+  return { pending: 10, in_progress: 55, waiting_parts: 40, owner_review: 80, done: 100, cancelled: 0 }[status] || 0;
+}
+
+function fmtDate(d) {
+  if (!d) return '—';
+  try { return new Date(d).toLocaleDateString('en-IN'); } catch (e) { return d; }
+}
+
+function loading() {
+  return '<div style="display:flex;align-items:center;justify-content:center;height:200px;"><div class="loader-spinner"></div></div>';
+}
+
+function getSQLSchema() {
+  return `-- Run in Supabase SQL Editor
+
+create table if not exists customers (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  phone text,
+  vehicle_number text unique not null,
+  vehicle_model text,
+  created_at timestamptz default now()
+);
+
+create table if not exists workers (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  specialization text,
+  phone text,
+  worker_id text unique not null,
+  password text not null,
+  created_at timestamptz default now()
+);
+
+create table if not exists jobs (
+  id uuid primary key default gen_random_uuid(),
+  customer_id uuid references customers(id),
+  worker_id uuid references workers(id),
+  title text not null,
+  description text,
+  status text default 'pending',
+  priority text default 'normal',
+  estimated_amount numeric default 0,
+  update_notes text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+create table if not exists bills (
+  id uuid primary key default gen_random_uuid(),
+  job_id uuid unique references jobs(id),
+  labour_charges numeric default 0,
+  parts_cost numeric default 0,
+  other_charges numeric default 0,
+  discount numeric default 0,
+  total_amount numeric default 0,
+  payment_status text default 'pending',
+  upi_id text,
+  notes text,
+  created_at timestamptz default now()
+);
+
+create table if not exists reviews (
+  id uuid primary key default gen_random_uuid(),
+  customer_id uuid references customers(id),
+  job_id uuid references jobs(id),
+  rating integer check(rating between 1 and 5),
+  feedback text,
+  created_at timestamptz default now()
+);
+
+-- IMPORTANT: Disable RLS on all tables
+alter table customers disable row level security;
+alter table workers disable row level security;
+alter table jobs disable row level security;
+alter table bills disable row level security;
+alter table reviews disable row level security;
+
+-- Add upi_id column if upgrading from old schema
+alter table bills add column if not exists upi_id text;`;
+}
+/* SMOOTH CURSOR SCRIPT */
+const dot = document.getElementById('cursor-dot');
+const outline = document.getElementById('cursor-outline');
+window.addEventListener('mousemove', e => {
+  const { clientX: x, clientY: y } = e;
+  dot.style.opacity = outline.style.opacity = 1;
+  dot.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%)`;
+  outline.animate({ transform: `translate(${x}px, ${y}px) translate(-50%, -50%)` }, { duration: 400, fill: "forwards" });
+  if (e.target.closest('a, button, input, select, .nav-item, [onclick]')) document.body.classList.add('cursor-active');
+  else document.body.classList.remove('cursor-active');
+});
+</script>
+<div class="cursor-dot" id="cursor-dot"></div>
+<div class="cursor-outline" id="cursor-outline"></div>
+</body>
+</html>

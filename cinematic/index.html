@@ -1,0 +1,56 @@
+<meta name="description"
+    content="Auto Craft: Experience the pinnacle of automotive craftsmanship with our cinematic frame-by-frame journey. Luxury, redefined.">
+<title>Auto Craft - Cinematic Automotive Luxury</title>
+<link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <nav class="main-nav">
+        <div class="nav-logo">Auto Craft</div>
+        <button class="nav-login-btn" onclick="location.href='/workshop'">Login</button>
+    </nav>
+
+    <div id="loader">
+        <div class="loader-content">
+            <h1 class="logo">Auto Craft</h1>
+            <div class="progress-bar">
+                <div class="progress"></div>
+            </div>
+            <p id="loading-percentage">0%</p>
+        </div>
+    </div>
+
+    <main>
+        <section id="hero">
+            <canvas id="canvas-sequence"></canvas>
+            <div class="content-overlay">
+                <div class="panel" id="panel-1">
+                    <h1>Silent Sophistication</h1>
+                    <p>Designed for those who seek the extraordinary in every detail.</p>
+                </div>
+                <div class="panel" id="panel-2">
+                    <h1>Pure Presence</h1>
+                    <p>A statement that speaks without saying a word. A presence that commands attention.</p>
+                </div>
+                <div class="panel" id="panel-3">
+                    <h1>Crafted to Perfection</h1>
+                    <p>Where heritage meets the future. Every frame, a testament to excellence.</p>
+                </div>
+                <div class="panel" id="panel-4">
+                    <h1>Auto Craft</h1>
+                    <p>Experience the art of the effortless. Redefining the standard of luxury.</p>
+                    <button class="cta-button" onclick="location.href='/workshop'">🔧 Enter AutoCraft Workshop</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- GSAP for smooth scrollytelling -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <script src="script.js"></script>
+    <div class="cursor-dot" id="cursor-dot"></div>
+    <div class="cursor-outline" id="cursor-outline"></div>
+</body>
+
+</html>
